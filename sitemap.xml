@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://workspace4you.co/</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://workspace4you.co/7.png</image:loc>
+      <image:title>WorkSpace4You Premium Coworking Space Mahim Mumbai</image:title>
+      <image:caption>Premium coworking space and virtual office in Mahim, Mumbai</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://workspace4you.co/1.png</image:loc>
+      <image:title>WorkSpace4You Main Coworking Hall Mahim Mumbai</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://workspace4you.co/5.png</image:loc>
+      <image:title>WorkSpace4You Coworking Desks Mumbai</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://workspace4you.co/6.png</image:loc>
+      <image:title>WorkSpace4You Meeting Room Mahim Mumbai</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://workspace4you.co/#services</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://workspace4you.co/#why</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://workspace4you.co/#gallery</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://workspace4you.co/#faq</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://workspace4you.co/#contact</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>
