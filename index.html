@@ -34,7 +34,6 @@
 <link rel="canonical" href="https://workspace4you.co/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="dns-prefetch" href="https://api.anthropic.com">
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-7QFXF1SP3W"></script>
@@ -562,7 +561,11 @@ footer ul li a:hover{color:var(--gold)}
 @media(max-width:640px){
   .nav-links{display:none}
   .hamburger{display:flex}
+  .hero-content{padding-top:40px}
+  .hero-badge{margin-bottom:16px}
   .hero h1{font-size:30px}
+  .hero-subtitle{margin-bottom:26px}
+  .hero-btns{margin-bottom:30px}
   .hero-stats{gap:28px}
   .footer-grid{grid-template-columns:1fr}
   .gallery-grid{grid-template-columns:1fr}
@@ -868,8 +871,8 @@ footer ul li a:hover{color:var(--gold)}
         <div class="form-group"><label>Service Interested In</label>
           <select id="cf-service">
             <option value="">Select a service...</option>
-            <option>Virtual Address – ₹6,368 total</option>
-            <option>Business Starter – ₹10,144 total</option>
+            <option>Virtual Address – ₹2,113 total</option>
+            <option>Business Starter – ₹7,308 total</option>
             <option>Day Pass – ₹825 total</option>
             <option>Dedicated Desk – ₹60,176 total</option>
           </select>
@@ -1079,7 +1082,7 @@ footer ul li a:hover{color:var(--gold)}
           </div>
         </div>
 
-        <button class="form-submit" style="background:#0B3A8D;margin-bottom:12px" onclick="showInvoice()">Download Invoice (PDF)</button>
+        <button class="form-submit" style="background:#0B3A8D;margin-bottom:12px" onclick="downloadInvoice()">Download Invoice (PDF)</button>
         <div style="font-size:12px;color:var(--gray)">Our team will contact you within 2 hours to complete your setup.</div>
       </div>
 
@@ -1399,6 +1402,7 @@ function initiatePayment(){
           if(!v.success) throw new Error(v.error||'Signature verification failed');
           invoiceNum = response.razorpay_payment_id;
           logToSheets({name:customer.name,phone:customer.phone,email:customer.email,plan:pkg.name,amount:pkg.amount,status:'Paid',txnId:response.razorpay_payment_id});
+          buildInvoice(response.razorpay_payment_id);
           showStep(6);
           setTimeout(function(){
             var cn=document.getElementById('conf-name');
@@ -1444,6 +1448,40 @@ function logToSheets(data){
       body:JSON.stringify(data)
     }).catch(function(){});
   }catch(e){}
+}
+
+// CONTACT FORM
+function submitEnquiry(){
+  var name=document.getElementById('cf-name').value.trim();
+  var phone=document.getElementById('cf-phone').value.trim();
+  var email=document.getElementById('cf-email').value.trim();
+  var service=document.getElementById('cf-service').value;
+  var msg=document.getElementById('cf-msg').value.trim();
+  if(!name){showToast('Please enter your name');return;}
+  if(!phone||phone.replace(/\D/g,'').length<10){showToast('Please enter a valid 10-digit phone number');return;}
+  if(!email){showToast('Please enter your email');return;}
+  var plan='Enquiry: '+(service||'General')+(msg?' — '+msg:'');
+  logToSheets({name:name,phone:phone,email:email,plan:plan,amount:'',status:'Form Filled'});
+  showToast('Thanks! We will get back to you shortly.');
+  document.getElementById('cf-name').value='';
+  document.getElementById('cf-phone').value='';
+  document.getElementById('cf-email').value='';
+  document.getElementById('cf-service').value='';
+  document.getElementById('cf-msg').value='';
+}
+
+// LEGAL PAGES
+function showLegal(which){
+  document.getElementById('legalPages').style.display='block';
+  ['privacy','terms','refund'].forEach(function(k){
+    document.getElementById('legal-'+k).style.display=(k===which)?'block':'none';
+  });
+  document.getElementById('legalPages').scrollTop=0;
+  document.body.style.overflow='hidden';
+}
+function hideLegal(){
+  document.getElementById('legalPages').style.display='none';
+  document.body.style.overflow='';
 }
 
 function buildInvoice(txnId){
