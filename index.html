@@ -448,6 +448,9 @@ footer ul li a:hover{color:var(--gold)}
 .float-wa{position:fixed;bottom:26px;right:26px;z-index:900;background:#25D366;color:#fff;width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:27px;box-shadow:0 4px 22px rgba(37,211,102,0.5);transition:all .3s;animation:pulse 2.2s infinite;text-decoration:none}
 .float-call{position:fixed;bottom:26px;left:26px;z-index:900;background:var(--blue);color:#fff;width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 22px rgba(11,58,141,0.45);transition:all .3s;text-decoration:none}
 .float-wa:hover,.float-call:hover{transform:scale(1.12)}
+@media(max-width:640px){
+  .float-wa.hide-float,.float-call.hide-float{opacity:0;pointer-events:none}
+}
 @keyframes pulse{0%,100%{box-shadow:0 4px 22px rgba(37,211,102,0.5)}50%{box-shadow:0 4px 36px rgba(37,211,102,0.75)}}
 
 /* POPUP */
@@ -1296,6 +1299,18 @@ setTimeout(function(){
 },800);
 function toggleFaq(el){var i=el.parentElement,o=i.classList.contains('open');document.querySelectorAll('.faq-item').forEach(function(x){x.classList.remove('open')});if(!o)i.classList.add('open')}
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},3500)}
+
+// Hide floating WhatsApp/Call buttons over the hero on mobile so they don't sit on top of the stats row
+(function(){
+  if(window.innerWidth>640) return;
+  var floatBtns=document.querySelectorAll('.float-wa,.float-call');
+  function toggleFloat(){
+    var hide=window.scrollY<420;
+    floatBtns.forEach(function(b){b.classList.toggle('hide-float',hide)});
+  }
+  window.addEventListener('scroll',toggleFloat,{passive:true});
+  toggleFloat();
+})();
 
 // POPUP
 function maybeShowPopup(){var l=localStorage.getItem('ws4y_pop');if(l&&(Date.now()-parseInt(l))<86400000)return;document.getElementById('popup').classList.add('show')}
