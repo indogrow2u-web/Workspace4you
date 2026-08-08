@@ -138,7 +138,7 @@
     {
       "@type": "Question",
       "name": "What is the total amount I need to pay for a virtual office in Mumbai?",
-      "acceptedAnswer": {"@type": "Answer", "text": "Virtual Address starts at ₹597/month. Total payable at booking is ₹2,113 (includes 2-month deposit + 1-month advance + GST 18%). Business Starter (includes GST registration) is ₹7,308 total. Day Pass is ₹825 (₹699 + GST). Dedicated Desk is ₹60,176 total."}
+      "acceptedAnswer": {"@type": "Answer", "text": "Virtual Address starts at ₹597/month. Total payable at booking is ₹2,113 (includes 2-month deposit + 1-month advance + GST 18%). Business Starter (includes GST registration) is ₹7,308 total. Day Pass is ₹825 (₹699 + GST). Dedicated Desk starts at ₹42,476 total."}
     },
     {
       "@type": "Question",
@@ -248,7 +248,7 @@
         "name": "Dedicated Desk",
         "description": "Your own permanent dedicated desk in a premium coworking space in Mahim, Mumbai with professional address, storage, and meeting room access.",
         "provider": {"@type": "Organization", "name": "WorkSpace4You"},
-        "offers": {"@type": "Offer", "price": "16999", "priceCurrency": "INR", "priceSpecification": {"@type": "UnitPriceSpecification", "price": "16999", "priceCurrency": "INR", "unitText": "month"}}
+        "offers": {"@type": "Offer", "price": "11999", "priceCurrency": "INR", "priceSpecification": {"@type": "UnitPriceSpecification", "price": "11999", "priceCurrency": "INR", "unitText": "month"}}
       }
     }
   ]
@@ -306,6 +306,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:14px 24px;display:f
 .stat-num{font-family:'Poppins',sans-serif;font-size:30px;font-weight:800;color:var(--gold)}
 .stat-label{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px}
 .hero-visual{position:relative}
+.scroll-hook{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,0.65);text-decoration:none;font-size:12px;font-weight:600;letter-spacing:.2px;text-align:center;max-width:220px;transition:color .2s}
+.scroll-hook:hover{color:#fff}
+.scroll-chevron{animation:scrollBounce 1.8s infinite}
+@keyframes scrollBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
 .floating-badge{position:absolute;top:-14px;right:14px;background:var(--gold);color:var(--dark);padding:8px 18px;border-radius:24px;font-size:12px;font-weight:800;box-shadow:0 4px 20px rgba(244,180,0,0.45);z-index:2}
 .hero-card{background:rgba(255,255,255,0.09);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:28px;margin-bottom:14px}
 .hero-card-title{color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}
@@ -341,6 +345,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:14px 24px;display:f
 .service-card:hover{transform:translateY(-7px);box-shadow:0 18px 52px rgba(11,58,141,0.16)}
 .service-tag{display:inline-block;background:var(--lightblue);color:var(--blue);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;padding:5px 14px;border-radius:24px;margin-bottom:18px}
 .service-card h3{font-size:22px;font-weight:800;color:var(--dark);margin-bottom:8px}
+.service-price-from{font-size:11px;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
 .service-price{font-size:32px;font-weight:800;color:var(--blue);font-family:'Poppins',sans-serif;margin-bottom:2px}
 .service-price-note{font-size:13px;color:var(--gray);margin-bottom:10px}
 .total-box{background:var(--lightblue);border-radius:10px;padding:12px 14px;margin-bottom:20px;border-left:3px solid var(--blue)}
@@ -350,6 +355,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:14px 24px;display:f
 .service-features{list-style:none;margin-bottom:22px}
 .service-features li{padding:8px 0;font-size:14px;color:#374151;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F3F4F6}
 .service-features li:last-child{border-bottom:none}
+.li-sub{display:block;font-size:11.5px;font-weight:400;color:var(--gray);margin-top:2px;line-height:1.5}
 .check{width:20px;height:20px;background:var(--blue);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
 .service-card.featured{background:linear-gradient(145deg,#0B3A8D 0%,#071f5e 100%)}
 .service-card.featured .service-tag{background:rgba(244,180,0,0.18);color:var(--gold)}
@@ -360,11 +366,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:14px 24px;display:f
 .service-card.featured .total-box .total-amount{color:var(--gold)}
 .service-card.featured .total-box .total-breakdown{color:rgba(255,255,255,0.55)}
 .service-card.featured .service-features li{color:rgba(255,255,255,0.82);border-color:rgba(255,255,255,0.1)}
+.service-card.featured .li-sub{color:rgba(255,255,255,0.55)}
+.service-card.featured .service-price-from{color:rgba(255,255,255,0.55)}
 .service-card.featured .check{background:var(--gold);color:var(--dark)}
 .popular-badge{position:absolute;top:18px;right:18px;background:var(--gold);color:var(--dark);padding:5px 14px;border-radius:24px;font-size:11px;font-weight:800}
 
 /* GALLERY */
-.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:220px 220px;gap:14px;margin-top:52px;border-radius:20px;overflow:hidden}
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:270px 270px;gap:14px;margin-top:52px;border-radius:20px;overflow:hidden}
 .gallery-item{position:relative;overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .gallery-item:first-child{grid-row:span 2}
 .gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
@@ -379,15 +387,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:14px 24px;display:f
 .amenity-name{font-size:13px;font-weight:700;color:var(--dark)}
 
 /* TESTIMONIALS */
-.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px;margin-top:52px}
-.testimonial-card{background:#fff;border:1px solid #E5E7EB;border-radius:18px;padding:26px;transition:all .3s}
-.testimonial-card:hover{box-shadow:0 10px 36px rgba(11,58,141,0.1);transform:translateY(-3px)}
-.stars{color:var(--gold);font-size:17px;margin-bottom:13px}
-.testimonial-text{font-size:14px;color:#374151;line-height:1.72;margin-bottom:18px;font-style:italic}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px;margin-top:52px}
+.testimonial-card{background:#fff;border:1px solid #E5E7EB;border-radius:20px;padding:32px;transition:all .3s}
+.testimonial-card:hover{box-shadow:0 14px 44px rgba(11,58,141,0.13);transform:translateY(-4px)}
+.stars{color:var(--gold);font-size:19px;margin-bottom:15px;letter-spacing:2px}
+.testimonial-text{font-size:15.5px;color:#374151;line-height:1.72;margin-bottom:20px;font-style:italic}
 .testimonial-author{display:flex;align-items:center;gap:12px}
-.author-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#1a237e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;font-family:'Poppins',sans-serif;flex-shrink:0}
-.author-name{font-weight:700;font-size:14px;color:var(--dark)}
-.author-role{font-size:12px;color:var(--gray)}
+.author-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#1a237e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;font-family:'Poppins',sans-serif;flex-shrink:0}
+.author-name{font-weight:700;font-size:14.5px;color:var(--dark)}
+.author-role{font-size:12.5px;color:var(--gray)}
 
 /* FAQ */
 .faq-list{max-width:780px;margin:52px auto 0}
@@ -558,7 +566,7 @@ footer ul li a:hover{color:var(--gold)}
   .hero-visual{display:none}
   .contact-grid{grid-template-columns:1fr}
   .footer-grid{grid-template-columns:1fr 1fr}
-  .gallery-grid{grid-template-columns:repeat(2,1fr);grid-template-rows:200px 200px 200px}
+  .gallery-grid{grid-template-columns:repeat(2,1fr);grid-template-rows:230px 230px 230px}
   .gallery-item:first-child{grid-row:span 1}
 }
 @media(max-width:640px){
@@ -572,7 +580,7 @@ footer ul li a:hover{color:var(--gold)}
   .hero-stats{gap:28px;row-gap:12px}
   .footer-grid{grid-template-columns:1fr}
   .gallery-grid{grid-template-columns:1fr}
-  .gallery-item{height:200px!important}
+  .gallery-item{height:230px!important}
   .pkg-grid{grid-template-columns:1fr}
   .section{padding:64px 20px}
   .contact-section{padding:64px 20px}
@@ -599,9 +607,9 @@ footer ul li a:hover{color:var(--gold)}
   <div class="nav-logo-text" onclick="scrollTo({top:0,behavior:'smooth'})">WorkSpace<span>4You</span></div>
   <div class="nav-links">
     <a href="#why">Why Us</a>
+    <a href="#gallery">Gallery</a>
     <a href="#services">Services</a>
     <a href="#services">Pricing</a>
-    <a href="#gallery">Gallery</a>
     <a href="#faq">FAQ</a>
     <a href="#contact">Contact</a>
     <a href="#" class="nav-cta" onclick="event.preventDefault();openBooking()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9,16 11,18 15,14"/></svg> Book Now</a>
@@ -612,8 +620,8 @@ footer ul li a:hover{color:var(--gold)}
 <div class="mobile-menu" id="mobileMenu">
   <button class="mobile-close" onclick="toggleMenu()">✕</button>
   <a href="#why" onclick="toggleMenu()">Why Us</a>
-  <a href="#services" onclick="toggleMenu()">Services</a>
   <a href="#gallery" onclick="toggleMenu()">Gallery</a>
+  <a href="#services" onclick="toggleMenu()">Services</a>
   <a href="#faq" onclick="toggleMenu()">FAQ</a>
   <a href="#contact" onclick="toggleMenu()">Contact</a>
   <a href="#" style="color:var(--gold)" onclick="toggleMenu();openBooking()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9,16 11,18 15,14"/></svg> Book Now</a>
@@ -645,7 +653,7 @@ footer ul li a:hover{color:var(--gold)}
         <div class="price-row"><span class="price-name">Virtual Address</span><span class="price-val">₹597/month</span></div>
         <div class="price-row"><span class="price-name">Business Starter</span><span class="price-val">₹4,999 setup</span></div>
         <div class="price-row"><span class="price-name">Day Pass</span><span class="price-val">₹699/day</span></div>
-        <div class="price-row"><span class="price-name">Dedicated Desk</span><span class="price-val">₹16,999/month</span></div>
+        <div class="price-row"><span class="price-name">Dedicated Desk</span><span class="price-val">₹11,999/month</span></div>
       </div>
       <div class="hero-card" style="padding:0;overflow:hidden;border-radius:20px">
         <img src="7.jpg" alt="Workspace4You Premium Coworking Mumbai" style="width:100%;height:180px;object-fit:cover;display:block">
@@ -659,6 +667,7 @@ footer ul li a:hover{color:var(--gold)}
       </div>
     </div>
   </div>
+  <a href="#gallery" class="scroll-hook"><span>See the space that's changing how Mumbai works</span><svg class="scroll-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6,9 12,15 18,9"/></svg></a>
 </section>
 
 <!-- WHY -->
@@ -698,6 +707,30 @@ footer ul li a:hover{color:var(--gold)}
   </div>
 </section>
 
+<!-- GALLERY -->
+<section class="section" id="gallery">
+  <div class="container">
+    <div class="section-eyebrow">Our Space</div>
+    <h2 class="section-title">Step Inside — Premium, Modern &amp; Inspiring</h2>
+    <p class="section-sub">This is where 500+ businesses come to work. Take a look around before you decide.</p>
+    <div class="gallery-grid">
+      <div class="gallery-item"><img src="1.jpg" alt="WorkSpace4You Premium Coworking Space Main Hall Mahim Mumbai" width="600" height="440" loading="lazy"><div class="gallery-label">Main Workspace</div></div>
+      <div class="gallery-item"><img src="5.jpg" alt="WorkSpace4You Coworking Desks and Workstations Mahim Mumbai" width="600" height="220" loading="lazy"><div class="gallery-label">Coworking Area</div></div>
+      <div class="gallery-item"><img src="6.jpg" alt="WorkSpace4You Meeting Room for Client Presentations Mahim Mumbai" width="600" height="220" loading="lazy"><div class="gallery-label">Meeting Room</div></div>
+      <div class="gallery-item"><img src="4.jpg" alt="WorkSpace4You Private Cabin for Startups Mumbai" width="600" height="220" loading="lazy"><div class="gallery-label">Private Cabin</div></div>
+      <div class="gallery-item"><img src="10.jpg" alt="WorkSpace4You Conference Room Mahim Mumbai" width="600" height="220" loading="lazy"><div class="gallery-label">Conference Room</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:10px;border-radius:16px;overflow:hidden">
+      <div style="height:200px;overflow:hidden"><img src="2.jpg" alt="Workspace4You Wall Art" style="width:100%;height:100%;object-fit:cover"></div>
+      <div style="height:200px;overflow:hidden"><img src="3.jpg" alt="Workspace4You Dedicated Desk" style="width:100%;height:100%;object-fit:cover"></div>
+      <div style="height:200px;overflow:hidden"><img src="7.jpg" alt="Workspace4You Open Office" style="width:100%;height:100%;object-fit:cover"></div>
+      <div style="height:200px;overflow:hidden"><img src="9.jpg" alt="Workspace4You Workspace" style="width:100%;height:100%;object-fit:cover"></div>
+    </div>
+    <p style="text-align:center;margin-top:18px;font-size:14px;color:var(--gray)">📍 115, Udyog Mandir No.1, 1st Floor, Mahim West, Mumbai 400016</p>
+    <p style="text-align:center;margin-top:22px"><a href="#services" style="color:var(--blue);font-weight:700;font-size:14px;text-decoration:none">Like what you see? See pricing →</a></p>
+  </div>
+</section>
+
 <!-- SERVICES -->
 <section class="section section-alt" id="services">
   <div class="container">
@@ -729,7 +762,7 @@ footer ul li a:hover{color:var(--gold)}
         <ul class="service-features">
           <li><span class="check">✓</span>Virtual business address</li>
           <li><span class="check">✓</span>GST Registration</li>
-          <li><span class="check">✓</span>Business Registration</li>
+          <li style="align-items:flex-start"><span class="check" style="margin-top:1px">✓</span><span>Business Registration<span class="li-sub">Udyam (MSME) · Shop &amp; Establishment (Gumasta) · TAN · Professional Tax</span></span></li>
           <li><span class="check">✓</span>Brand Registration</li>
           <li><span class="check">✓</span>Mail handling &amp; forwarding</li>
         </ul>
@@ -751,8 +784,9 @@ footer ul li a:hover{color:var(--gold)}
       <!-- Plan 4: Dedicated Desk -->
       <div class="service-card">
         <div class="service-tag">Dedicated Desk</div>
-        <h3>Fixed Workspace</h3>
-        <div class="service-price">₹16,999</div>
+        <h3>Dedicated Desk</h3>
+        <div class="service-price-from">Starting from</div>
+        <div class="service-price">₹11,999</div>
         <div class="service-price-note">per month</div>
         <ul class="service-features">
           <li><span class="check">✓</span>Professional business address</li>
@@ -761,32 +795,9 @@ footer ul li a:hover{color:var(--gold)}
           <li><span class="check">✓</span>Unlimited WiFi &amp; beverages</li>
           <li><span class="check">✓</span>Meeting room hours included</li>
         </ul>
-        <button class="btn-primary" style="width:100%;justify-content:center" onclick="openBookingPkg('Dedicated Desk','60176','Deposit: 2×₹16,999 + Advance: ₹16,999 + GST 18%')">Book Now →</button>
+        <button class="btn-primary" style="width:100%;justify-content:center" onclick="openBookingPkg('Dedicated Desk','42476','Deposit: 2×₹11,999 + Advance: ₹11,999 + GST 18%')">Book Now →</button>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- GALLERY -->
-<section class="section" id="gallery">
-  <div class="container">
-    <div class="section-eyebrow">Our Space</div>
-    <h2 class="section-title">Premium, Modern &amp; Inspiring</h2>
-    <p class="section-sub">Designed for productivity and collaboration. A space where your business can truly grow.</p>
-    <div class="gallery-grid">
-      <div class="gallery-item"><img src="1.jpg" alt="WorkSpace4You Premium Coworking Space Main Hall Mahim Mumbai" width="600" height="440" loading="lazy"><div class="gallery-label">Main Workspace</div></div>
-      <div class="gallery-item"><img src="5.jpg" alt="WorkSpace4You Coworking Desks and Workstations Mahim Mumbai" width="600" height="220" loading="lazy"><div class="gallery-label">Coworking Area</div></div>
-      <div class="gallery-item"><img src="6.jpg" alt="WorkSpace4You Meeting Room for Client Presentations Mahim Mumbai" width="600" height="220" loading="lazy"><div class="gallery-label">Meeting Room</div></div>
-      <div class="gallery-item"><img src="4.jpg" alt="WorkSpace4You Private Cabin for Startups Mumbai" width="600" height="220" loading="lazy"><div class="gallery-label">Private Cabin</div></div>
-      <div class="gallery-item"><img src="10.jpg" alt="WorkSpace4You Conference Room Mahim Mumbai" width="600" height="220" loading="lazy"><div class="gallery-label">Conference Room</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:10px;border-radius:16px;overflow:hidden">
-      <div style="height:160px;overflow:hidden"><img src="2.jpg" alt="Workspace4You Wall Art" style="width:100%;height:100%;object-fit:cover"></div>
-      <div style="height:160px;overflow:hidden"><img src="3.jpg" alt="Workspace4You Dedicated Desk" style="width:100%;height:100%;object-fit:cover"></div>
-      <div style="height:160px;overflow:hidden"><img src="7.jpg" alt="Workspace4You Open Office" style="width:100%;height:100%;object-fit:cover"></div>
-      <div style="height:160px;overflow:hidden"><img src="9.jpg" alt="Workspace4You Workspace" style="width:100%;height:100%;object-fit:cover"></div>
-    </div>
-    <p style="text-align:center;margin-top:18px;font-size:14px;color:var(--gray)">📍 115, Udyog Mandir No.1, 1st Floor, Mahim West, Mumbai 400016</p>
   </div>
 </section>
 
@@ -814,11 +825,12 @@ footer ul li a:hover{color:var(--gold)}
 </section>
 
 <!-- TESTIMONIALS -->
-<section class="section">
+<section class="section" id="testimonials">
   <div class="container">
     <div class="center">
       <div class="section-eyebrow">Testimonials</div>
-      <h2 class="section-title">What Our Members Say</h2>
+      <h2 class="section-title">Loved by 500+ Businesses in Mumbai</h2>
+      <p class="section-sub">Don't just take our word for it — hear from the founders and teams who call this home.</p>
     </div>
     <div class="testimonials-grid">
       <div class="testimonial-card"><div class="stars">★★★★★</div><p class="testimonial-text">The virtual office process was incredibly smooth. Got my GST registration completed within days. Best decision for my startup.</p><div class="testimonial-author"><div class="author-avatar">RS</div><div><div class="author-name">Rahul Sharma</div><div class="author-role">E-commerce Founder</div></div></div></div>
@@ -838,7 +850,7 @@ footer ul li a:hover{color:var(--gold)}
     </div>
     <div class="faq-list">
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Can I register my GST using your address?<span class="faq-ico">+</span></div><div class="faq-a">Yes. Our Virtual Address and Business Starter plans support GST registration, company registration, and business registrations.</div></div>
-      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What is the total amount I need to pay?<span class="faq-ico">+</span></div><div class="faq-a">Each plan shows the complete total including deposit, advance, and GST 18%. Virtual Address: ₹2,113 total (₹597/month) | Business Starter: ₹7,308 total | Day Pass: ₹825 total | Dedicated Desk: ₹60,176 total. All amounts are clearly shown before payment.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What is the total amount I need to pay?<span class="faq-ico">+</span></div><div class="faq-a">Each plan shows the complete total including deposit, advance, and GST 18%. Virtual Address: ₹2,113 total (₹597/month) | Business Starter: ₹7,308 total | Day Pass: ₹825 total | Dedicated Desk: starts at ₹42,476 total (₹11,999/month). All amounts are clearly shown before payment.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is the virtual address valid across India?<span class="faq-ico">+</span></div><div class="faq-a">Yes. Businesses from anywhere in India can subscribe and use our Mahim, Mumbai address for all government registrations.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What payment methods do you accept?<span class="faq-ico">+</span></div><div class="faq-a">UPI, Credit/Debit Cards, Net Banking, and Wallets — all processed securely via Razorpay.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What are your business hours?<span class="faq-ico">+</span></div><div class="faq-a">Open every day from 8:00 AM to 10:00 PM, 365 days a year.</div></div>
@@ -877,7 +889,7 @@ footer ul li a:hover{color:var(--gold)}
             <option>Virtual Address – ₹2,113 total</option>
             <option>Business Starter – ₹7,308 total</option>
             <option>Day Pass – ₹825 total</option>
-            <option>Dedicated Desk – ₹60,176 total</option>
+            <option>Dedicated Desk – from ₹42,476 total</option>
           </select>
         </div>
         <div class="form-group"><label>Message</label><textarea id="cf-msg" rows="3" placeholder="Tell us about your requirements..."></textarea></div>
@@ -1016,9 +1028,9 @@ footer ul li a:hover{color:var(--gold)}
           <div class="pkg-p">₹699</div>
           <div class="pkg-total">per day</div>
         </div>
-        <div class="pkg-opt" onclick="selectPkg(this,'Dedicated Desk','60176','Deposit 2×₹16,999 + Advance ₹16,999 + GST 18%','16999','month')">
+        <div class="pkg-opt" onclick="selectPkg(this,'Dedicated Desk','42476','Deposit 2×₹11,999 + Advance ₹11,999 + GST 18%','11999','month')">
           <div class="pkg-n">Dedicated Desk</div>
-          <div class="pkg-p">₹16,999</div>
+          <div class="pkg-p">₹11,999</div>
           <div class="pkg-total">per month</div>
         </div>
       </div>
@@ -1186,7 +1198,7 @@ function applyConfig(cfg){
   var va = parseInt(p.virtualAddress||597);
   var bs = parseInt(p.businessStarter||4999);
   var dp = parseInt(p.dayPass||699);
-  var dd = parseInt(p.dedicatedDesk||16999);
+  var dd = parseInt(p.dedicatedDesk||11999);
 
   // Recalculate totals
   var vaTotal = (2*va+va) + Math.round((2*va+va)*0.18);
@@ -1281,7 +1293,7 @@ var PACKAGES = {
   'Virtual Address':   {base:597, displayPrice:'₹597/month', deposit:2*597, advance:597, service:0, getTotal:function(){var d=this.deposit+this.advance; return d+Math.round(d*0.18);}, getBreakdownRows:function(){var d=this.deposit+this.advance,g=Math.round(d*0.18);return [['Deposit (2 months refundable)','₹'+this.deposit.toLocaleString('en-IN')],['Advance (1 month)','₹'+this.advance.toLocaleString('en-IN')],['GST 18%','₹'+g.toLocaleString('en-IN')]]}},
   'Business Starter':  {base:4999, displayPrice:'₹4,999 setup', deposit:2*597, advance:0, service:4999, getTotal:function(){var d=this.deposit+this.service; return d+Math.round(d*0.18);}, getBreakdownRows:function(){var d=this.deposit+this.service,g=Math.round(d*0.18);return [['Deposit (2 months refundable)','₹'+this.deposit.toLocaleString('en-IN')],['Service Charge','₹'+this.service.toLocaleString('en-IN')],['GST 18%','₹'+g.toLocaleString('en-IN')]]}},
   'Day Pass':          {base:699, displayPrice:'₹699/day', deposit:0, advance:0, service:699, getTotal:function(){return this.service+Math.round(this.service*0.18);}, getBreakdownRows:function(){var g=Math.round(this.service*0.18);return [['Day Rent','₹'+this.service.toLocaleString('en-IN')],['GST 18%','₹'+g.toLocaleString('en-IN')]]}},
-  'Dedicated Desk':    {base:16999, displayPrice:'₹16,999/month', deposit:2*16999, advance:16999, service:0, getTotal:function(){var d=this.deposit+this.advance; return d+Math.round(d*0.18);}, getBreakdownRows:function(){var d=this.deposit+this.advance,g=Math.round(d*0.18);return [['Deposit (2 months refundable)','₹'+this.deposit.toLocaleString('en-IN')],['Advance (1 month)','₹'+this.advance.toLocaleString('en-IN')],['GST 18%','₹'+g.toLocaleString('en-IN')]]}},
+  'Dedicated Desk':    {base:11999, displayPrice:'₹11,999/month', deposit:2*11999, advance:11999, service:0, getTotal:function(){var d=this.deposit+this.advance; return d+Math.round(d*0.18);}, getBreakdownRows:function(){var d=this.deposit+this.advance,g=Math.round(d*0.18);return [['Deposit (2 months refundable)','₹'+this.deposit.toLocaleString('en-IN')],['Advance (1 month)','₹'+this.advance.toLocaleString('en-IN')],['GST 18%','₹'+g.toLocaleString('en-IN')]]}},
 };
 
 var pkg = {name:'Virtual Address', amount:'2113', breakdown:'Deposit 2×₹597 + Advance ₹597 + GST 18%'};

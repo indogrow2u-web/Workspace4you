@@ -432,7 +432,7 @@ function savePricing(){
   var va=parseInt(document.getElementById('e-va-price').value)||597;
   var bs=parseInt(document.getElementById('e-bs-price').value)||4999;
   var dp=parseInt(document.getElementById('e-dp-price').value)||699;
-  var dd=parseInt(document.getElementById('e-dd-price').value)||16999;
+  var dd=parseInt(document.getElementById('e-dd-price').value)||11999;
   var vaT=(2*va+va)+Math.round((2*va+va)*0.18);
   var bsT=(2*va+bs)+Math.round((2*va+bs)*0.18);
   var dpT=dp+Math.round(dp*0.18);
@@ -450,7 +450,7 @@ function loadEditorValues(){
     document.getElementById('e-va-price').value=p.virtualAddress||597;
     document.getElementById('e-bs-price').value=p.businessStarter||4999;
     document.getElementById('e-dp-price').value=p.dayPass||699;
-    document.getElementById('e-dd-price').value=p.dedicatedDesk||16999;
+    document.getElementById('e-dd-price').value=p.dedicatedDesk||11999;
     document.getElementById('e-phone').value=c.phone||'+91 77180 86678';
     document.getElementById('e-wa').value=c.whatsapp||'917718086678';
     document.getElementById('e-email').value=c.email||'workspace2you@gmail.com';

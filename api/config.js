@@ -20,7 +20,7 @@ const DEFAULT_CONFIG = {
     virtualAddress: 597,
     businessStarter: 4999,
     dayPass: 699,
-    dedicatedDesk: 16999
+    dedicatedDesk: 11999
   },
   contact: {
     phone: '+91 77180 86678',
