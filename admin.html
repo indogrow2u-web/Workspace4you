@@ -183,10 +183,15 @@ tr:hover td{background:#FAFBFF}
     <div class="editor-grid">
       <div class="editor-card">
         <h3>Pricing</h3>
-        <div class="field-row"><label>Virtual Address (per month)</label><input type="number" id="e-va-price" placeholder="Loading..."></div>
-        <div class="field-row"><label>Business Starter (service charge)</label><input type="number" id="e-bs-price" placeholder="Loading..."></div>
+        <div class="field-row"><label>Virtual Address — Monthly (per month)</label><input type="number" id="e-va-price" placeholder="Loading..."></div>
+        <div class="field-row"><label>Virtual Address — Annual (per month, 12mo commit)</label><input type="number" id="e-va-annual-price" placeholder="Loading..."></div>
+        <div class="field-row"><label>Business Starter (one-time service charge)</label><input type="number" id="e-bs-price" placeholder="Loading..."></div>
         <div class="field-row"><label>Day Pass (per day)</label><input type="number" id="e-dp-price" placeholder="Loading..."></div>
-        <div class="field-row"><label>Dedicated Desk (per month)</label><input type="number" id="e-dd-price" placeholder="Loading..."></div>
+        <div class="field-row"><label>Open Desk (per month, per seat)</label><input type="number" id="e-od-price" placeholder="Loading..."></div>
+        <div class="field-row"><label>Power Seat (per month, per seat)</label><input type="number" id="e-ps-price" placeholder="Loading..."></div>
+        <div class="field-row"><label>Semi-Enclosed Cubicle (per month, per seat)</label><input type="number" id="e-se-price" placeholder="Loading..."></div>
+        <div class="field-row"><label>Glass Cabin (per month, per seat)</label><input type="number" id="e-gc-price" placeholder="Loading..."></div>
+        <div class="field-row"><label>Meeting Room (per hour)</label><input type="number" id="e-mr-price" placeholder="Loading..."></div>
         <button class="save-btn" onclick="savePricing()" id="priceSaveBtn">Save & Update Website</button>
         <div class="save-note" id="priceOutput"></div>
       </div>
@@ -212,7 +217,7 @@ tr:hover td{background:#FAFBFF}
       <div class="editor-card">
         <h3>Business Hours</h3>
         <div class="field-row"><label>Opening Hours</label><input type="text" id="e-hours" placeholder="Loading..."></div>
-        <div class="field-row"><label>Days Open</label><select id="e-days"><option>Mon–Sun (365 days)</option><option>Mon–Sat</option><option>Mon–Fri</option></select></div>
+        <div class="field-row"><label>Days Open</label><select id="e-days"><option>Mon–Sat</option><option>Mon–Fri</option><option>Mon–Sun (365 days)</option></select></div>
         <div class="field-row"><label>Now Open Badge Text</label><input type="text" id="e-openbadge" placeholder="Loading..."></div>
         <button class="save-btn" onclick="saveHours()" id="hoursSaveBtn">Save & Update Website</button>
         <div class="save-note" id="hoursOutput"></div>
@@ -429,16 +434,22 @@ function saveToServer(payload,outputId,btnId){
 }
 
 function savePricing(){
-  var va=parseInt(document.getElementById('e-va-price').value)||597;
+  var va=parseInt(document.getElementById('e-va-price').value)||1799;
+  var vaA=parseInt(document.getElementById('e-va-annual-price').value)||1499;
   var bs=parseInt(document.getElementById('e-bs-price').value)||4999;
-  var dp=parseInt(document.getElementById('e-dp-price').value)||699;
-  var dd=parseInt(document.getElementById('e-dd-price').value)||11999;
-  var vaT=(2*va+va)+Math.round((2*va+va)*0.18);
-  var bsT=(2*va+bs)+Math.round((2*va+bs)*0.18);
+  var dp=parseInt(document.getElementById('e-dp-price').value)||800;
+  var od=parseInt(document.getElementById('e-od-price').value)||11999;
+  var ps=parseInt(document.getElementById('e-ps-price').value)||13499;
+  var se=parseInt(document.getElementById('e-se-price').value)||14999;
+  var gc=parseInt(document.getElementById('e-gc-price').value)||19999;
+  var mr=parseInt(document.getElementById('e-mr-price').value)||500;
+  // 1 month deposit + 1 month advance + 18% GST (contracts up to 12 months)
+  var vaT=(2*va)+Math.round((2*va)*0.18);
+  var bsT=(va+bs)+Math.round((va+bs)*0.18);
   var dpT=dp+Math.round(dp*0.18);
-  var ddT=(2*dd+dd)+Math.round((2*dd+dd)*0.18);
-  document.getElementById('priceOutput').innerHTML='<span style="color:var(--gray)">Customer totals: VA Rs '+vaT.toLocaleString('en-IN')+' · BS Rs '+bsT.toLocaleString('en-IN')+' · DP Rs '+dpT.toLocaleString('en-IN')+' · DD Rs '+ddT.toLocaleString('en-IN')+'</span>';
-  saveToServer({prices:{virtualAddress:va,businessStarter:bs,dayPass:dp,dedicatedDesk:dd}},'priceOutput','priceSaveBtn');
+  var odT=(2*od)+Math.round((2*od)*0.18);
+  document.getElementById('priceOutput').innerHTML='<span style="color:var(--gray)">Customer totals (1 seat, monthly): VA Rs '+vaT.toLocaleString('en-IN')+' · BS Rs '+bsT.toLocaleString('en-IN')+' · DP Rs '+dpT.toLocaleString('en-IN')+' · Open Desk Rs '+odT.toLocaleString('en-IN')+'</span>';
+  saveToServer({prices:{virtualAddressMonthly:va,virtualAddressAnnual:vaA,businessStarter:bs,dayPass:dp,openDesk:od,powerSeat:ps,semiEnclosed:se,glassCabin:gc,meetingRoomHourly:mr}},'priceOutput','priceSaveBtn');
 }
 function saveContact(){saveToServer({contact:{phone:document.getElementById('e-phone').value,whatsapp:document.getElementById('e-wa').value,email:document.getElementById('e-email').value,address:document.getElementById('e-addr').value}},'contactOutput','contactSaveBtn');}
 function saveHero(){saveToServer({hero:{line1:document.getElementById('e-h1').value,line2:document.getElementById('e-h2').value,line3:document.getElementById('e-h3').value,line4:document.getElementById('e-h4').value,badge:document.getElementById('e-badge').value}},'heroOutput','heroSaveBtn');}
@@ -447,21 +458,26 @@ function saveHours(){saveToServer({hours:{opening:document.getElementById('e-hou
 function loadEditorValues(){
   fetch(CONFIG_URL).then(function(r){return r.json();}).then(function(cfg){
     var p=cfg.prices||{},c=cfg.contact||{},h=cfg.hero||{},hr=cfg.hours||{};
-    document.getElementById('e-va-price').value=p.virtualAddress||597;
+    document.getElementById('e-va-price').value=p.virtualAddressMonthly||1799;
+    document.getElementById('e-va-annual-price').value=p.virtualAddressAnnual||1499;
     document.getElementById('e-bs-price').value=p.businessStarter||4999;
-    document.getElementById('e-dp-price').value=p.dayPass||699;
-    document.getElementById('e-dd-price').value=p.dedicatedDesk||11999;
+    document.getElementById('e-dp-price').value=p.dayPass||800;
+    document.getElementById('e-od-price').value=p.openDesk||11999;
+    document.getElementById('e-ps-price').value=p.powerSeat||13499;
+    document.getElementById('e-se-price').value=p.semiEnclosed||14999;
+    document.getElementById('e-gc-price').value=p.glassCabin||19999;
+    document.getElementById('e-mr-price').value=p.meetingRoomHourly||500;
     document.getElementById('e-phone').value=c.phone||'+91 77180 86678';
     document.getElementById('e-wa').value=c.whatsapp||'917718086678';
     document.getElementById('e-email').value=c.email||'workspace2you@gmail.com';
-    document.getElementById('e-addr').value=c.address||'115, Udyog Mandir No.1, 1st Floor, Mahim West, Mumbai 400016';
+    document.getElementById('e-addr').value=c.address||'115, Udyog Mandir No.1, 1st Floor, B.K. Road, 7/C Pitamber Lane, Mahim West, Mumbai 400016';
     document.getElementById('e-h1').value=h.line1||'Work Smarter.';
     document.getElementById('e-h2').value=h.line2||'Grow Faster.';
     document.getElementById('e-h3').value=h.line3||"Mumbai's Premium";
     document.getElementById('e-h4').value=h.line4||'Workspace Hub';
     document.getElementById('e-badge').value=h.badge||'Trusted by 500+ Businesses in Mumbai';
-    document.getElementById('e-hours').value=hr.opening||'8 AM–10 PM';
-    document.getElementById('e-openbadge').value=hr.badge||'Now Open · 8 AM–10 PM';
+    document.getElementById('e-hours').value=hr.opening||'10 AM–7 PM';
+    document.getElementById('e-openbadge').value=hr.badge||'Open Now · Mon–Sat, 10 AM–7 PM';
   }).catch(function(){});
 }
 

@@ -17,16 +17,21 @@ function setCorsHeaders(res) {
 
 const DEFAULT_CONFIG = {
   prices: {
-    virtualAddress: 597,
+    virtualAddressMonthly: 1799,
+    virtualAddressAnnual: 1499,
     businessStarter: 4999,
-    dayPass: 699,
-    dedicatedDesk: 11999
+    dayPass: 800,
+    openDesk: 11999,
+    powerSeat: 13499,
+    semiEnclosed: 14999,
+    glassCabin: 19999,
+    meetingRoomHourly: 500
   },
   contact: {
     phone: '+91 77180 86678',
     whatsapp: '917718086678',
     email: 'workspace2you@gmail.com',
-    address: '115, Udyog Mandir No.1, 1st Floor, Mahim West, Mumbai 400016'
+    address: '115, Udyog Mandir No.1, 1st Floor, B.K. Road, 7/C Pitamber Lane, Mahim West, Mumbai 400016'
   },
   hero: {
     line1: 'Work Smarter.',
@@ -36,9 +41,9 @@ const DEFAULT_CONFIG = {
     badge: 'Trusted by 500+ Businesses in Mumbai'
   },
   hours: {
-    opening: '8 AM–10 PM',
-    days: 'Mon–Sun (365 days)',
-    badge: 'Now Open · 8 AM–10 PM'
+    opening: '10 AM–7 PM',
+    days: 'Mon–Sat',
+    badge: 'Open Now · Mon–Sat, 10 AM–7 PM'
   }
 };
 
