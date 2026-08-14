@@ -406,6 +406,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:14px 24px;display:f
 .tier-photo-placeholder{aspect-ratio:4/3;border-radius:14px;background:repeating-linear-gradient(45deg,#F3F4F6,#F3F4F6 10px,#F8FAFC 10px,#F8FAFC 20px);border:1.5px dashed #CBD5E1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#9CA3AF;gap:6px;margin-bottom:18px;text-align:center;padding:12px}
 .tier-photo-placeholder svg{width:26px;height:26px;stroke:#9CA3AF;flex-shrink:0}
 .tier-photo-placeholder span{font-size:11.5px;font-weight:700}
+.tier-photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:14px;margin-bottom:18px;display:block}
 .savings-banner{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#FFF8E1,#FFF3D0);border:1.5px solid #FBE3A3;border-radius:16px;padding:18px 24px;margin:28px 0 8px;font-size:14px;color:#5b4a12;line-height:1.6}
 .savings-banner-icon{font-size:26px;flex-shrink:0}
 .meeting-room-card{margin-top:28px;background:#fff;border:1.5px solid #E5E7EB;border-radius:20px;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
@@ -859,7 +860,7 @@ footer ul li a:hover{color:var(--gold)}
     </div>
     <div class="services-grid">
       <div class="service-card">
-        <div class="tier-photo-placeholder" data-photo-slot="open-desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Open Desk photo coming soon</span></div>
+        <img class="tier-photo" src="1.jpg" alt="WorkSpace4You Open Desk shared coworking floor Mahim Mumbai" loading="lazy">
         <div class="service-tag">Dedicated Desk</div>
         <h3>Open Desk</h3>
         <div class="service-price" data-price-key="openDesk">₹11,999</div>
@@ -872,7 +873,7 @@ footer ul li a:hover{color:var(--gold)}
         <button class="btn-primary" style="width:100%;justify-content:center" onclick="openBookingPkg('Open Desk')">Book Now →</button>
       </div>
       <div class="service-card">
-        <div class="tier-photo-placeholder" data-photo-slot="power-seat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Power Seat photo coming soon</span></div>
+        <img class="tier-photo" src="4.jpg" alt="WorkSpace4You Power Seat desk with pedestal storage Mahim Mumbai" loading="lazy">
         <div class="service-tag">Dedicated Desk</div>
         <h3>Power Seat</h3>
         <div class="service-price" data-price-key="powerSeat">₹13,499</div>
@@ -886,7 +887,7 @@ footer ul li a:hover{color:var(--gold)}
       </div>
       <div class="service-card featured">
         <div class="popular-badge">Most Popular</div>
-        <div class="tier-photo-placeholder" data-photo-slot="semi-enclosed-cubicle" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.75)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Cubicle photo coming soon</span></div>
+        <img class="tier-photo" src="5.jpg" alt="WorkSpace4You Semi-Enclosed Cubicle with partition walls Mahim Mumbai" loading="lazy">
         <div class="service-tag">Dedicated Desk</div>
         <h3>Semi-Enclosed Cubicle</h3>
         <div class="service-price" data-price-key="semiEnclosed">₹14,999</div>
@@ -899,7 +900,7 @@ footer ul li a:hover{color:var(--gold)}
         <button class="btn-primary" style="width:100%;justify-content:center;background:var(--gold);color:var(--dark)" onclick="openBookingPkg('Semi-Enclosed Cubicle')">Book Now →</button>
       </div>
       <div class="service-card">
-        <div class="tier-photo-placeholder" data-photo-slot="glass-cabin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Glass Cabin photo coming soon</span></div>
+        <img class="tier-photo" src="3.jpg" alt="WorkSpace4You Glass Cabin fully enclosed private office Mahim Mumbai" loading="lazy">
         <div class="service-tag">Dedicated Desk</div>
         <h3>Glass Cabin</h3>
         <div class="service-price" data-price-key="glassCabin">₹19,999</div>
@@ -913,7 +914,8 @@ footer ul li a:hover{color:var(--gold)}
       </div>
     </div>
     <div class="meeting-room-card">
-      <div>
+      <img src="6.jpg" alt="WorkSpace4You Meeting Room with TV and conference table Mahim Mumbai" loading="lazy" style="width:160px;height:110px;object-fit:cover;border-radius:12px;flex-shrink:0">
+      <div style="flex:1;min-width:220px">
         <div class="service-tag" style="margin-bottom:10px">Add-on</div>
         <h3 style="margin-bottom:6px">Meeting Room</h3>
         <p style="color:var(--gray);font-size:14px;line-height:1.6">TV + Whiteboard · Seats up to 6 · Pay only for the hours you use. Semi-Enclosed Cubicle &amp; Glass Cabin members get monthly hours included free.</p>
