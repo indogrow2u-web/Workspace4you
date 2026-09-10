@@ -101,7 +101,7 @@ tr:hover td{background:#FAFBFF}
   <div class="login-card">
     <div class="login-logo">WorkSpace<span>4You</span></div>
     <div class="login-sub">Admin Dashboard · Secure Access</div>
-    <input type="password" id="passInput" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" id="passInput" placeholder="Enter admin password">
     <button class="login-btn" onclick="doLogin()">Login</button>
     <div class="login-err" id="loginErr">Incorrect password. Try again.</div>
   </div>
@@ -245,7 +245,7 @@ tr:hover td{background:#FAFBFF}
       <div class="setup-step">
         <div class="step-num">3</div>
         <div>
-          <div style="font-weight:700;margin-bottom:5px">Add your Script URL as Netlify environment variable</div>
+          <div style="font-weight:700;margin-bottom:5px">Add your Script URL as a Vercel environment variable</div>
           <div style="font-size:13px;color:var(--gray)">Key: <code style="background:#F1F5F9;padding:2px 6px;border-radius:4px">GOOGLE_SCRIPT_URL</code> — already done if leads are being written to your sheet.</div>
         </div>
       </div>
@@ -253,7 +253,7 @@ tr:hover td{background:#FAFBFF}
         <div class="step-num done">4</div>
         <div>
           <div style="font-weight:700;margin-bottom:5px">Also add your Script URL below so the dashboard can read leads directly</div>
-          <div style="font-size:13px;color:var(--gray);margin-bottom:10px">Paste your Google Apps Script Web App URL here (same URL you added to Netlify):</div>
+          <div style="font-size:13px;color:var(--gray);margin-bottom:10px">Paste your Google Apps Script Web App URL here (same URL you added in Vercel). If you've set a <code style="background:#F1F5F9;padding:2px 6px;border-radius:4px">SHARED_SECRET</code> in Code.gs, append <code style="background:#F1F5F9;padding:2px 6px;border-radius:4px">?key=YOUR_SECRET</code> to the end — without it the dashboard won't be able to read leads.</div>
           <input type="text" id="sheetUrlInput" placeholder="https://script.google.com/macros/s/..." style="width:100%;max-width:580px;padding:10px 13px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;font-family:'Inter',sans-serif">
           <button onclick="saveSheetUrl()" style="margin-left:10px;padding:10px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save URL</button>
           <div id="sheetUrlNote" style="font-size:12px;color:var(--gray);margin-top:8px"></div>
@@ -268,33 +268,73 @@ tr:hover td{background:#FAFBFF}
 <div class="toast" id="toast"></div>
 
 <script>
-var ADMIN_PASS = 'workspace4you2024';
+var LOGIN_URL = '/api/admin-login';
 var CONFIG_URL = '/api/config';
 var currentFilter = 'all';
 var allLeads = [];
 var SHEET_URL_KEY = 'ws4y_sheet_url';
+var TOKEN_KEY = 'ws4y_admin_token';
+var TOKEN_EXP_KEY = 'ws4y_admin_token_exp';
 
 // ---- AUTH ----
-function doLogin(){
-  if(document.getElementById('passInput').value === ADMIN_PASS){
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-    loadLeads();
-    // Pre-fill sheet URL if saved
-    var saved = localStorage.getItem(SHEET_URL_KEY);
-    if(saved) document.getElementById('sheetUrlInput').value = saved;
-  } else {
-    document.getElementById('loginErr').style.display='block';
-    document.getElementById('passInput').value='';
-    setTimeout(function(){document.getElementById('loginErr').style.display='none';},2500);
+// The admin password now lives only server-side (ADMIN_PASSWORD env var).
+// Logging in exchanges it for a short-lived signed session token — the
+// password itself is never stored or reused from this page again.
+function getAdminToken(){
+  var exp = parseInt(localStorage.getItem(TOKEN_EXP_KEY)||'0',10);
+  if(!exp || Date.now() > exp){
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXP_KEY);
+    return '';
   }
+  return localStorage.getItem(TOKEN_KEY)||'';
+}
+
+function enterDashboard(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  loadLeads();
+  var saved = localStorage.getItem(SHEET_URL_KEY);
+  if(saved) document.getElementById('sheetUrlInput').value = saved;
+}
+
+function doLogin(){
+  var pass = document.getElementById('passInput').value;
+  var btn = document.querySelector('.login-btn');
+  if(btn){btn.textContent='Checking...';btn.disabled=true;}
+  fetch(LOGIN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok, body:d};});})
+    .then(function(res){
+      if(!res.ok || !res.body.success) throw new Error(res.body.error||'Incorrect password');
+      localStorage.setItem(TOKEN_KEY, res.body.token);
+      localStorage.setItem(TOKEN_EXP_KEY, String(res.body.expiresAt));
+      document.getElementById('passInput').value='';
+      enterDashboard();
+    })
+    .catch(function(err){
+      document.getElementById('loginErr').textContent = err.message || 'Incorrect password. Try again.';
+      document.getElementById('loginErr').style.display='block';
+      document.getElementById('passInput').value='';
+      setTimeout(function(){document.getElementById('loginErr').style.display='none';},3000);
+    })
+    .finally(function(){
+      if(btn){btn.textContent='Login';btn.disabled=false;}
+    });
 }
 document.getElementById('passInput').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+
 function doLogout(){
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_EXP_KEY);
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('dashboard').style.display='none';
   document.getElementById('passInput').value='';
 }
+
+// Resume an existing (non-expired) session without re-prompting for the password
+(function(){
+  if(getAdminToken()) enterDashboard();
+})();
 
 // ---- TABS ----
 function switchTab(name,btn){
@@ -340,6 +380,13 @@ function loadLeads(){
   fetch(sheetUrl)
     .then(function(r){return r.json();})
     .then(function(data){
+      if(data && data.error){
+        allLeads = [];
+        document.getElementById('leadsBody').innerHTML='<tr><td colspan="10" class="no-data">Google Sheet rejected the request: '+esc(data.error)+'.<br><span style="font-size:12px">If you set a SHARED_SECRET in Code.gs, make sure the URL saved here ends with the matching "?key=..."</span></td></tr>';
+        document.getElementById('lastRefresh').textContent='Unauthorized';
+        updateStats();
+        return;
+      }
       allLeads = data.leads || [];
       updateStats();
       renderTable();
@@ -422,15 +469,22 @@ function exportCSV(){
 // ---- EDITOR ----
 function saveToServer(payload,outputId,btnId){
   var out=document.getElementById(outputId),btn=document.getElementById(btnId);
+  var token = getAdminToken();
+  if(!token){ doLogout(); showToast('Session expired — please log in again'); return; }
   if(btn){btn.textContent='Saving...';btn.disabled=true;}
   if(out)out.innerHTML='';
-  fetch(CONFIG_URL,{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':ADMIN_PASS},body:JSON.stringify(payload)})
-    .then(function(r){return r.json();})
+  fetch(CONFIG_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)})
+    .then(function(r){
+      if(r.status===401){ doLogout(); showToast('Session expired — please log in again'); throw new Error('Session expired'); }
+      return r.json();
+    })
     .then(function(d){
       if(d.success){showToast('Website updated!');if(out)out.innerHTML='<span style="color:var(--green);font-weight:600">Saved. Changes are live on your website.</span>';}
       else throw new Error(d.error||'Save failed');
     })
-    .catch(function(err){showToast('Save failed');if(out)out.innerHTML='<span style="color:var(--red)">Error: '+err.message+'</span>';})
+    .catch(function(err){
+      if(err.message!=='Session expired'){showToast('Save failed');if(out)out.innerHTML='<span style="color:var(--red)">Error: '+err.message+'</span>';}
+    })
     .finally(function(){if(btn){btn.textContent='Save & Update Website';btn.disabled=false;}});
 }
 

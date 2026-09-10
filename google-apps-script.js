@@ -2,19 +2,47 @@
 // WorkSpace4You — Google Apps Script (Write + Read)
 // REPLACE your existing Code.gs with this entire file
 // Then do: Deploy → Manage Deployments → Edit → New Version → Deploy
+//
+// OPTIONAL HARDENING: leads (name/phone/email) are readable by
+// anyone who has this Web App's URL, since Apps Script URLs aren't
+// truly secret. To lock that down, set SHARED_SECRET below to a
+// long random string, redeploy, then:
+//   - Set SHEETS_SHARED_SECRET in Vercel to the exact same value
+//     (api/_sheets.js sends it on every write automatically)
+//   - Append "?key=<that same value>" to the URL you save in
+//     Admin Dashboard → Setup Guide (that's what the dashboard
+//     uses to read leads)
+// Until you do this, doGet/doPost behave exactly as before (open).
 // ============================================================
 
+var SHARED_SECRET = 'REPLACE_WITH_A_LONG_RANDOM_STRING';
+
+function isKeyConfigured() {
+  return SHARED_SECRET.indexOf('REPLACE_WITH') !== 0;
+}
+
+function checkKey(key) {
+  if (!isKeyConfigured()) return true; // not opted in yet — behaves as before
+  return key === SHARED_SECRET;
+}
+
 function doGet(e) {
+  if (!checkKey(e.parameter && e.parameter.key)) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: 'Unauthorized' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   // Read all leads from sheet — used by Admin Dashboard
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var lastRow = sheet.getLastRow();
-  
+
   if (lastRow <= 1) {
     return ContentService
       .createTextOutput(JSON.stringify({ leads: [] }))
       .setMimeType(ContentService.MimeType.JSON);
   }
-  
+
   var data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
   var leads = data.map(function(row) {
     return {
@@ -35,8 +63,16 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+
+  if (!checkKey(data.key)) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  
+
   if (sheet.getLastRow() === 0) {
     var headers = ['Timestamp', 'Name', 'Phone', 'Email', 'Plan', 'Amount (Rs)', 'Status', 'Transaction ID'];
     sheet.appendRow(headers);
@@ -46,22 +82,27 @@ function doPost(e) {
     sheet.setColumnWidth(4,180); sheet.setColumnWidth(5,150); sheet.setColumnWidth(6,110);
     sheet.setColumnWidth(7,160); sheet.setColumnWidth(8,200);
   }
-  
-  var data = JSON.parse(e.postData.contents);
+
   var lastRow = sheet.getLastRow();
-  
-  // If status is an update (Paid / Dropped), find existing row by phone and update it
-  var phoneCol = lastRow > 1 ? sheet.getRange(2, 3, lastRow - 1, 1).getValues() : [];
+
+  // If status is an update (Paid / Dropped / etc), find the matching existing
+  // row by phone AND plan, searching most-recent-first. Matching on phone
+  // alone (and taking the first row found) could land the update on a
+  // different, older booking from the same repeat customer.
   var existingRow = -1;
-  if (data.status !== 'Form Filled') {
-    for (var i = 0; i < phoneCol.length; i++) {
-      if (String(phoneCol[i][0]) === String(data.phone)) {
+  if (data.status !== 'Form Filled' && lastRow > 1) {
+    var phoneCol = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
+    var planCol  = sheet.getRange(2, 5, lastRow - 1, 1).getValues();
+    for (var i = phoneCol.length - 1; i >= 0; i--) {
+      var rowPhone = String(phoneCol[i][0]);
+      var rowPlan  = String(planCol[i][0]);
+      if (rowPhone === String(data.phone) && (!data.plan || rowPlan === String(data.plan))) {
         existingRow = i + 2;
         break;
       }
     }
   }
-  
+
   if (existingRow > 0) {
     sheet.getRange(existingRow, 7).setValue(data.status);
     if (data.txnId) sheet.getRange(existingRow, 8).setValue(data.txnId);
@@ -79,9 +120,9 @@ function doPost(e) {
     ]);
     colorStatusCell(sheet, sheet.getLastRow(), data.status);
   }
-  
+
   SpreadsheetApp.flush();
-  
+
   return ContentService
     .createTextOutput(JSON.stringify({success: true}))
     .setMimeType(ContentService.MimeType.JSON);

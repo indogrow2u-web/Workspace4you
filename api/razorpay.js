@@ -1,17 +1,17 @@
 // ============================================================
 // Workspace4You — Razorpay Payment Backend
 // File: api/razorpay.js
+// The order amount is always computed server-side from the live
+// site config — the browser tells us WHICH plan/duration/seats
+// were picked, never how much to charge. See api/_pricing.js.
 // ============================================================
+
+const { readConfig } = require('./_configStore');
+const { computeTotal } = require('./_pricing');
+const { setCorsHeaders } = require('./_cors');
 
 const RAZORPAY_KEY_ID     = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
-
-function setCorsHeaders(req, res) {
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-}
 
 module.exports = async function handler(req, res) {
   setCorsHeaders(req, res);
@@ -30,14 +30,20 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { name, email, phone, amount, productinfo } = body || {};
+    const { name, email, phone, plan, duration, seats, productinfo } = body || {};
 
-    if (!name || !phone || !amount || !productinfo) {
+    if (!name || !phone || !plan || !productinfo) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Amount in paise (multiply by 100)
-    const amountPaise = Math.round(parseFloat(amount) * 100);
+    const config = await readConfig();
+    const amount = computeTotal(plan, { duration, seats }, config.prices);
+
+    if (amount === null) {
+      return res.status(400).json({ error: 'Unknown or currently unavailable plan' });
+    }
+
+    const amountPaise = Math.round(amount * 100);
 
     // Create Razorpay order via API
     const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64');
@@ -71,6 +77,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: true,
       orderId: order.id,
+      amount: amount,
       amountPaise: amountPaise,
       currency: 'INR',
       keyId: RAZORPAY_KEY_ID

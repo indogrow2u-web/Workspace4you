@@ -86,14 +86,20 @@
     {
       "@type": "Review",
       "reviewRating": {"@type": "Rating", "ratingValue": "5"},
-      "author": {"@type": "Person", "name": "Rahul Verma"},
-      "reviewBody": "Best virtual office in Mumbai. GST registration done in 3 days. Very professional team at Workspace4You."
+      "author": {"@type": "Person", "name": "Rahul Sharma"},
+      "reviewBody": "The virtual office process was incredibly smooth. Got my GST registration completed within days. Best decision for my startup."
     },
     {
       "@type": "Review",
       "reviewRating": {"@type": "Rating", "ratingValue": "5"},
       "author": {"@type": "Person", "name": "Priya Mehta"},
-      "reviewBody": "Clean workspace, excellent internet, unlimited coffee. The private cabin gave my business the professional edge I needed."
+      "reviewBody": "Clean workspace, excellent internet, unlimited coffee, and an incredibly supportive team. The private cabin gave my business the professional edge I needed."
+    },
+    {
+      "@type": "Review",
+      "reviewRating": {"@type": "Rating", "ratingValue": "5"},
+      "author": {"@type": "Person", "name": "Ankit Shah"},
+      "reviewBody": "Perfect location near Mahim station. Great value for startups. We have been members for 8 months and productivity has gone through the roof."
     },
     {
       "@type": "Review",
@@ -1665,13 +1671,18 @@ function initiatePayment(){
       name:customer.name,
       email:customer.email||'noemail@workspace4you.co',
       phone:customer.phone,
-      amount:pkg.amount,
+      plan:pkg.name,
+      duration:pkg.duration,
+      seats:pkg.seats,
       productinfo:pkg.label||pkg.name
     })
   })
   .then(function(r){return r.json();})
   .then(function(data){
     if(!data.success) throw new Error(data.error||'Payment initiation failed');
+    // The server recomputes the total from the live price list — trust that
+    // figure (not our own earlier estimate) for the invoice and confirmation.
+    pkg.amount = String(data.amount);
     if(btn){btn.textContent='Pay Now →';btn.disabled=false;}
     var options={
       key: data.keyId,
@@ -1696,8 +1707,8 @@ function initiatePayment(){
         .then(function(r){return r.json();})
         .then(function(v){
           if(!v.success) throw new Error(v.error||'Signature verification failed');
-          invoiceNum = response.razorpay_payment_id;
-          logToSheets({name:customer.name,phone:customer.phone,email:customer.email,plan:pkg.label||pkg.name,amount:pkg.amount,status:'Paid',txnId:response.razorpay_payment_id});
+          // No need to log "Paid" to the sheet from here — api/verify-payment
+          // already did that server-side, using Razorpay's own payment record.
           buildInvoice(response.razorpay_payment_id);
           showStep(6);
           setTimeout(function(){
@@ -1732,9 +1743,6 @@ function initiatePayment(){
     showToast('Payment failed to load. Please try again or WhatsApp us.');
   });
 }
-
-function escInv(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
 
 function logToSheets(data){
   try{
@@ -1780,15 +1788,34 @@ function hideLegal(){
   document.body.style.overflow='';
 }
 
+// Recompute the pre-tax base and GST directly from the pricing engine
+// (rather than reverse-dividing the rounded total by 1.18) so the invoice's
+// base + CGST + SGST always reconciles exactly with the total, with zero
+// rounding drift.
+function getCurrentBaseAndGst(){
+  var def = PACKAGES[pkg.name];
+  var base = 0;
+  if(def){
+    if(def.type==='virtual') base = 2*def.getRate(pkg.duration);
+    else if(def.type==='onetime') base = def.vaRate+def.service;
+    else if(def.type==='day') base = def.service;
+    else if(def.type==='seat') base = 2*def.getEffectiveMonthly(pkg.seats);
+  }
+  return {base:base, gst:Math.round(base*0.18)};
+}
+
 function buildInvoice(txnId){
-  var total=parseInt(pkg.amount);
-  var base=Math.round(total/1.18);
-  var gst=total-base;
+  var bg=getCurrentBaseAndGst();
+  var base=bg.base, gst=bg.gst, total=base+gst;
   var cgst=Math.floor(gst/2);
   var sgst=gst-cgst; // split this way (not two independent rounds) so base+CGST+SGST always equals total exactly
   var today=new Date();
   var dateStr=today.getDate()+'/'+(today.getMonth()+1)+'/'+today.getFullYear();
-  invoiceNum='WS4Y-'+Math.floor(Math.random()*90000+10000); txnId=txnId||invoiceNum;
+  // Derive the invoice number from the real Razorpay payment ID (globally
+  // unique) instead of a random number, so it can never collide between
+  // customers and stays traceable back to the actual transaction.
+  invoiceNum = 'WS4Y-' + (txnId ? String(txnId).replace(/[^a-zA-Z0-9]/g,'').slice(-8).toUpperCase() : Date.now().toString().slice(-8));
+  txnId = txnId || invoiceNum;
   var el;
   el=document.getElementById('invNumber'); if(el)el.textContent=invoiceNum;
   el=document.getElementById('invDate'); if(el)el.textContent=dateStr;

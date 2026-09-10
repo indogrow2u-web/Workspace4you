@@ -18,9 +18,9 @@
 // ============================================================
 
 const crypto = require('crypto');
+const { logRow } = require('./_sheets');
 
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
-const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || '';
 
 function readRawBody(req){
   return new Promise(function(resolve, reject){
@@ -38,9 +38,9 @@ function readRawBody(req){
   });
 }
 
-function logPaymentEvent(payment, status){
+function paymentToRow(payment, status){
   var notes = payment.notes || {};
-  var row = {
+  return {
     name: notes.customer_name || '',
     phone: notes.customer_phone || payment.contact || '',
     email: notes.customer_email || payment.email || '',
@@ -49,12 +49,6 @@ function logPaymentEvent(payment, status){
     status: status,
     txnId: payment.id
   };
-  if (!GOOGLE_SCRIPT_URL) return Promise.resolve();
-  return fetch(GOOGLE_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(row)
-  }).catch(function(err){ console.error('Webhook sheet log failed:', err); });
 }
 
 module.exports = async function handler(req, res){
@@ -97,9 +91,9 @@ module.exports = async function handler(req, res){
   var payment = event.payload && event.payload.payment && event.payload.payment.entity;
 
   if (event.event === 'payment.captured' && payment) {
-    await logPaymentEvent(payment, 'Paid');
+    await logRow(paymentToRow(payment, 'Paid'));
   } else if (event.event === 'payment.failed' && payment) {
-    await logPaymentEvent(payment, 'Payment Failed (Webhook)');
+    await logRow(paymentToRow(payment, 'Payment Failed (Webhook)'));
   }
 
   return res.status(200).json({ received: true });
