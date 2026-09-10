@@ -36,6 +36,7 @@
       </div>
       <div class="info-box">Deposit (1 month, refundable) + advance (1 month) + GST 18% is payable at booking. The exact total is shown before you pay.</div>
       <button class="btn-primary" onclick="startApplication()" id="step1Btn">Continue →</button>
+      <a href="index.html" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">← Back to Home</a>
     </div>
   </div>
 
@@ -63,6 +64,7 @@
       <div id="emailVerifiedNote" style="display:none;color:var(--green);font-weight:700;font-size:13px;margin:-8px 0 14px">✓ Email verified</div>
       <div class="error-msg" id="step2Err"></div>
       <button class="btn-primary" onclick="submitPersonal()" id="step2Btn">Continue →</button>
+      <button class="btn-secondary" onclick="goStep(1)">← Back</button>
     </div>
   </div>
 
