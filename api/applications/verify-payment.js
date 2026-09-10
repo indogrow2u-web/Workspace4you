@@ -74,7 +74,7 @@ module.exports = async function handler(req, res) {
     await logEvent(app.id, 'system', 'Status → Verification Pending');
 
     const resumeToken = generateResumeToken(app.application_code);
-    const resumeUrl = resumeToken ? `${SITE_URL}/apply.html?resume=${resumeToken}` : `${SITE_URL}/track.html`;
+    const resumeUrl = resumeToken ? `${SITE_URL}/track.html?resume=${resumeToken}` : `${SITE_URL}/track.html`;
 
     if (app.email) {
       await sendApplicationReceiptEmail(

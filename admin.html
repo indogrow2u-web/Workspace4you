@@ -123,6 +123,7 @@ tr:hover td{background:#FAFBFF}
   <div class="tabs">
     <button class="tab active" onclick="switchTab('leads',this)">Leads & Payments</button>
     <button class="tab" onclick="switchTab('vaApps',this)">Virtual Address</button>
+    <button class="tab" onclick="switchTab('agreements',this)">Agreement Templates</button>
     <button class="tab" onclick="switchTab('editor',this)">Site Content</button>
     <button class="tab" onclick="switchTab('setup',this)">Setup Guide</button>
   </div>
@@ -229,8 +230,8 @@ tr:hover td{background:#FAFBFF}
 
   <!-- VIRTUAL ADDRESS APPLICATIONS TAB -->
   <div id="tab-vaApps" style="display:none">
-    <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#92400E;font-weight:600">
-      Phase 1 — view only. Verification, approval, agreement generation and activation actions land in Phase 2.
+    <div style="background:#E8F0FE;border:1px solid #c7d9fb;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:var(--blue);font-weight:600">
+      Identity verification here is manual review — open the uploaded document, check it against the details on file, then Approve, Request More Information, or Reject. Agreements only generate after Approve, and only from whichever template is Published in the Agreement Templates tab.
     </div>
     <div class="stats-row" id="va-stats"></div>
 
@@ -270,6 +271,31 @@ tr:hover td{background:#FAFBFF}
     <div class="panel" id="va-detailPanel" style="display:none;padding:24px">
       <button class="refresh-btn" style="margin-bottom:16px" onclick="closeVaDetail()">← Back to list</button>
       <div id="va-detailBody">Loading...</div>
+    </div>
+  </div>
+
+  <!-- AGREEMENT TEMPLATES TAB -->
+  <div id="tab-agreements" style="display:none">
+    <div class="editor-grid">
+      <div class="editor-card">
+        <h3>Versions</h3>
+        <div id="agr-list" style="margin-bottom:14px">Loading...</div>
+        <button class="save-btn" onclick="newAgreementDraft()" style="background:var(--green)">+ New Draft</button>
+      </div>
+      <div class="editor-card" style="grid-column:span 2">
+        <h3 id="agr-editorTitle">Select a version</h3>
+        <div class="field-row"><label>Version Label</label><input type="text" id="agr-version" placeholder="e.g. v1.1"></div>
+        <div class="field-row"><label>Content (HTML — use {{customerName}}, {{businessName}}, {{businessType}}, {{businessIdentifier}}, {{virtualAddress}}, {{planName}}, {{duration}}, {{startDate}}, {{endDate}}, {{permittedUse}}, {{applicationCode}})</label>
+          <textarea id="agr-content" style="min-height:320px;font-family:monospace;font-size:12px"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="save-btn" style="width:auto;padding:11px 20px" id="agr-saveBtn" onclick="saveAgreementDraft()">Save Draft</button>
+          <button class="refresh-btn" onclick="previewAgreement()">Preview</button>
+          <button class="export-btn" id="agr-publishBtn" onclick="publishAgreement()">Publish</button>
+        </div>
+        <div class="save-note" id="agr-note"></div>
+        <div id="agr-previewBox" style="display:none;margin-top:18px;border:1px solid #E5E7EB;border-radius:10px;padding:18px;background:#F8FAFC;max-height:400px;overflow-y:auto"></div>
+      </div>
     </div>
   </div>
 
@@ -387,6 +413,7 @@ function doLogout(){
 function switchTab(name,btn){
   if(name==='editor') loadEditorValues();
   if(name==='vaApps') loadVaApplications();
+  if(name==='agreements') loadAgreements();
   if(name==='setup'){
     var saved=localStorage.getItem(SHEET_URL_KEY);
     if(saved) document.getElementById('sheetUrlInput').value=saved;
@@ -689,19 +716,48 @@ function vaField(label,val){
   return '<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--gray);text-transform:uppercase;font-weight:700;letter-spacing:.5px">'+label+'</div><div style="font-size:14px;font-weight:600">'+esc(val||'—')+'</div></div>';
 }
 
+function vaActionButtons(a){
+  var terminal = ['rejected','terminated','expired'].indexOf(a.status) !== -1;
+  var canReview = a.payment_status === 'paid' && !terminal &&
+    ['approved','agreement_pending','agreement_sent','agreement_accepted','ready_for_activation','active'].indexOf(a.status) === -1;
+  var canGenerateAgreement = a.status === 'approved' && a.agreement_status === 'not_generated';
+  var canActivate = a.agreement_status === 'accepted' && a.activation_status !== 'active';
+  var canRefund = a.payment_status === 'paid' && a.refund_status === 'none';
+
+  var btns = '';
+  if(canReview){
+    btns += '<button class="save-btn" style="width:auto;padding:10px 18px;background:var(--green)" onclick="vaApprove(\''+esc(a.application_code)+'\')">Approve</button>';
+    btns += '<button class="refresh-btn" onclick="vaRequestInfo(\''+esc(a.application_code)+'\')">Request More Information</button>';
+    btns += '<button class="save-btn" style="width:auto;padding:10px 18px;background:var(--red)" onclick="vaReject(\''+esc(a.application_code)+'\')">Reject</button>';
+  }
+  if(canGenerateAgreement){
+    btns += '<button class="save-btn" style="width:auto;padding:10px 18px" onclick="vaGenerateAgreement(\''+esc(a.application_code)+'\')">Generate Agreement</button>';
+  }
+  if(canActivate){
+    btns += '<button class="save-btn" style="width:auto;padding:10px 18px;background:var(--green)" onclick="vaActivate(\''+esc(a.application_code)+'\')">Activate Virtual Address</button>';
+  }
+  if(canRefund){
+    btns += '<button class="refresh-btn" style="color:var(--red);border-color:var(--red)" onclick="vaRefund(\''+esc(a.application_code)+'\')">Initiate Refund</button>';
+  }
+  if(!btns) btns = '<span style="color:var(--gray);font-size:13px">No actions available for this status.</span>';
+  return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px;padding:16px;background:#F8FAFC;border-radius:10px">'+btns+'</div>';
+}
+
 function renderVaDetail(a, events){
   var addressUsage = Array.isArray(a.address_usage) ? a.address_usage.join(', ') : '';
   var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">'+
     '<h2 style="font-family:\'Poppins\',sans-serif">'+esc(a.application_code)+'</h2>'+
     '<span class="status-badge status-filled">'+esc(VA_STATUS_LABELS[a.status]||a.status)+'</span></div>'+
+    vaActionButtons(a)+
     '<div class="editor-grid">'+
       '<div class="editor-card"><h3>Customer</h3>'+vaField('Name',a.full_name)+vaField('Mobile',a.mobile+(a.mobile_verified_at?' ✓ verified':' (not verified — SMS OTP on hold)'))+vaField('Email',a.email+(a.email_verified_at?' ✓ verified':' (unverified)'))+'</div>'+
       '<div class="editor-card"><h3>Business</h3>'+vaField('Type',a.business_type)+vaField('Business Name',a.business_name)+vaField('Activity',a.business_activity)+vaField('PAN',a.pan)+vaField('GSTIN',a.gstin)+vaField('Udyam',a.udyam_number)+vaField('CIN',a.cin)+vaField('LLPIN',a.llpin)+(a.no_gst_udyam?vaField('Note','No GST/Udyam — flagged for manual verification'):'')+'</div>'+
       '<div class="editor-card"><h3>Address Usage</h3>'+vaField('Selected uses',addressUsage)+vaField('Inventory receiving requested',a.inventory_requested?'YES — needs admin decision':'No')+'</div>'+
-      '<div class="editor-card"><h3>Payment</h3>'+vaField('Plan',a.plan_name+' ('+a.duration+')')+vaField('Amount',a.payment_amount?('₹'+parseInt(a.payment_amount).toLocaleString('en-IN')):'—')+vaField('Payment Status',a.payment_status)+vaField('Razorpay Payment ID',a.razorpay_payment_id)+vaField('Razorpay Order ID',a.razorpay_order_id)+'</div>'+
+      '<div class="editor-card"><h3>Payment</h3>'+vaField('Plan',a.plan_name+' ('+a.duration+')')+vaField('Amount',a.payment_amount?('₹'+parseInt(a.payment_amount).toLocaleString('en-IN')):'—')+vaField('Payment Status',a.payment_status)+vaField('Refund Status',a.refund_status)+vaField('Razorpay Payment ID',a.razorpay_payment_id)+vaField('Razorpay Order ID',a.razorpay_order_id)+'</div>'+
       '<div class="editor-card"><h3>Verification &amp; Review</h3>'+vaField('Verification Status',a.verification_status)+vaField('Admin Review Status',a.admin_review_status)+vaField('Info Requested',a.info_requested)+'</div>'+
-      '<div class="editor-card"><h3>Agreement &amp; Activation</h3>'+vaField('Agreement Version',a.agreement_version)+vaField('Agreement Status',a.agreement_status)+vaField('Activation Status',a.activation_status)+vaField('Activation Date',a.activation_date)+'</div>'+
+      '<div class="editor-card"><h3>Agreement &amp; Activation</h3>'+vaField('Agreement Version',a.agreement_version)+vaField('Agreement Status',a.agreement_status)+vaField('Activation Status',a.activation_status)+vaField('Activation Date',a.activation_date)+vaField('Expiry Date',a.expiry_date)+'</div>'+
     '</div>'+
+    '<div class="panel" style="margin-top:20px;padding:20px"><h3 style="font-family:\'Poppins\',sans-serif;font-size:14px;margin-bottom:14px">Documents</h3><div id="va-docsSection">Loading...</div></div>'+
     '<div class="panel" style="margin-top:20px;padding:20px"><h3 style="font-family:\'Poppins\',sans-serif;font-size:14px;margin-bottom:14px">Activity History</h3>'+
     (events&&events.length ? events.map(function(e){
       var when = new Date(e.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -709,6 +765,186 @@ function renderVaDetail(a, events){
     }).join('') : '<div style="color:var(--gray);font-size:13px">No activity yet</div>')+
     '</div>';
   document.getElementById('va-detailBody').innerHTML = html;
+  loadVaDocuments(a.application_code);
+}
+
+// ---- VA ADMIN ACTIONS ----
+function vaAction(url, code, extraBody){
+  var token = getAdminToken();
+  if(!token){ doLogout(); return; }
+  fetch(url, {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify(Object.assign({code:code}, extraBody||{}))})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Action failed');
+      showToast('Done');
+      openVaDetail(code);
+      loadVaApplications();
+    })
+    .catch(function(e){ showToast(e.message); });
+}
+function vaApprove(code){
+  if(!confirm('Approve this application? This unlocks agreement generation.')) return;
+  vaAction('/api/applications/admin-approve', code);
+}
+function vaReject(code){
+  var reason = prompt('Reason for rejection (this will be emailed to the customer):');
+  if(reason===null) return;
+  vaAction('/api/applications/admin-reject', code, {reason:reason});
+}
+function vaRequestInfo(code){
+  var message = prompt('What do you need from the customer? (emailed to them, with a link back to their application)');
+  if(!message) return;
+  vaAction('/api/applications/admin-request-info', code, {message:message});
+}
+function vaGenerateAgreement(code){
+  if(!confirm('Generate the agreement using the currently PUBLISHED template? This cannot be un-done, and the customer will be emailed immediately.')) return;
+  vaAction('/api/applications/admin-generate-agreement', code);
+}
+function vaActivate(code){
+  if(!confirm('Activate this Virtual Address now?')) return;
+  vaAction('/api/applications/admin-activate', code);
+}
+function vaRefund(code){
+  if(!confirm('Initiate a full refund via Razorpay for this payment? This cannot be un-done.')) return;
+  vaAction('/api/applications/admin-refund', code);
+}
+
+// ---- VA DOCUMENTS ----
+function loadVaDocuments(code){
+  var token = getAdminToken();
+  fetch('/api/applications/admin-documents?code='+encodeURIComponent(code), {headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not load documents');
+      renderVaDocuments(code, d.documents);
+    })
+    .catch(function(){
+      var el = document.getElementById('va-docsSection');
+      if(el) el.innerHTML = '<span style="color:var(--gray);font-size:13px">Could not load documents.</span>';
+    });
+}
+function renderVaDocuments(code, docs){
+  var el = document.getElementById('va-docsSection');
+  if(!el) return;
+  if(!docs || !docs.length){ el.innerHTML = '<span style="color:var(--gray);font-size:13px">No documents uploaded yet.</span>'; return; }
+  el.innerHTML = docs.map(function(d){
+    var size = (d.size_bytes/1024).toFixed(0)+' KB';
+    var when = new Date(d.created_at).toLocaleDateString('en-IN');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:13px">'+
+      '<span>'+esc(d.doc_type)+' — '+esc(d.filename)+' ('+size+', '+when+')</span>'+
+      '<button class="copy-btn" onclick="viewVaDocument(\''+esc(code)+'\','+d.id+')">View</button>'+
+    '</div>';
+  }).join('');
+}
+function viewVaDocument(code, docId){
+  var token = getAdminToken();
+  fetch('/api/applications/document?code='+encodeURIComponent(code)+'&docId='+docId, {headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){ if(!r.ok) throw new Error('Could not load document'); return r.blob(); })
+    .then(function(blob){ window.open(URL.createObjectURL(blob), '_blank'); })
+    .catch(function(e){ showToast(e.message); });
+}
+
+// ---- AGREEMENT TEMPLATES ----
+var allAgreementTemplates = [];
+var currentAgreementId = null;
+
+function loadAgreements(){
+  var token = getAdminToken();
+  if(!token){ doLogout(); return; }
+  fetch('/api/agreement-templates/list', {headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not load templates');
+      allAgreementTemplates = d.templates||[];
+      renderAgreementList();
+    })
+    .catch(function(err){ document.getElementById('agr-list').innerHTML='<span style="color:var(--red);font-size:13px">'+esc(err.message)+'</span>'; });
+}
+function renderAgreementList(){
+  var el = document.getElementById('agr-list');
+  if(!allAgreementTemplates.length){ el.innerHTML='<span style="color:var(--gray);font-size:13px">No templates yet</span>'; return; }
+  el.innerHTML = allAgreementTemplates.map(function(t){
+    var badge = t.status==='published' ? 'status-paid' : (t.status==='draft' ? 'status-filled' : 'status-dropped');
+    var sel = t.id===currentAgreementId ? 'background:#E8F0FE;' : '';
+    return '<div style="padding:10px;border-radius:8px;cursor:pointer;margin-bottom:6px;border:1px solid #F3F4F6;'+sel+'" onclick="selectAgreementTemplate('+t.id+')">'+
+      '<div style="font-weight:700;font-size:13px">'+esc(t.version)+'</div>'+
+      '<span class="status-badge '+badge+'" style="margin-top:4px;display:inline-block">'+esc(t.status)+'</span>'+
+    '</div>';
+  }).join('');
+}
+function selectAgreementTemplate(id){
+  var t = allAgreementTemplates.filter(function(x){return x.id===id;})[0];
+  if(!t) return;
+  currentAgreementId = t.id;
+  var isDraft = t.status==='draft';
+  document.getElementById('agr-editorTitle').textContent = t.version + ' ('+t.status+')';
+  document.getElementById('agr-version').value = t.version;
+  document.getElementById('agr-content').value = t.content;
+  document.getElementById('agr-note').innerHTML='';
+  document.getElementById('agr-previewBox').style.display='none';
+  document.getElementById('agr-version').disabled = !isDraft;
+  document.getElementById('agr-content').disabled = !isDraft;
+  document.getElementById('agr-saveBtn').style.display = isDraft ? 'inline-block' : 'none';
+  document.getElementById('agr-publishBtn').style.display = isDraft ? 'inline-block' : 'none';
+  renderAgreementList();
+}
+function newAgreementDraft(){
+  currentAgreementId = null;
+  var base = allAgreementTemplates.filter(function(t){return t.status==='published';})[0] || allAgreementTemplates[0];
+  document.getElementById('agr-editorTitle').textContent = 'New Draft';
+  document.getElementById('agr-version').value = '';
+  document.getElementById('agr-version').disabled = false;
+  document.getElementById('agr-content').value = base ? base.content : '';
+  document.getElementById('agr-content').disabled = false;
+  document.getElementById('agr-note').innerHTML='';
+  document.getElementById('agr-previewBox').style.display='none';
+  document.getElementById('agr-saveBtn').style.display='inline-block';
+  document.getElementById('agr-publishBtn').style.display='none';
+  renderAgreementList();
+}
+function saveAgreementDraft(){
+  var version = document.getElementById('agr-version').value.trim();
+  var content = document.getElementById('agr-content').value;
+  if(!version || !content.trim()){ showToast('Version and content are required'); return; }
+  var token = getAdminToken();
+  var btn = document.getElementById('agr-saveBtn');
+  btn.textContent='Saving...'; btn.disabled=true;
+  fetch('/api/agreement-templates/save', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({id:currentAgreementId, version:version, content:content})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Save failed');
+      currentAgreementId = d.id;
+      showToast('Draft saved');
+      loadAgreements();
+    })
+    .catch(function(e){ document.getElementById('agr-note').innerHTML='<span style="color:var(--red)">'+esc(e.message)+'</span>'; })
+    .finally(function(){ btn.textContent='Save Draft'; btn.disabled=false; });
+}
+function previewAgreement(){
+  var content = document.getElementById('agr-content').value;
+  var sample = {
+    customerName:'Rahul Sharma', businessName:'Sharma Traders', businessType:'Proprietorship',
+    businessIdentifier:'27ABCDE1234F1Z5', virtualAddress:'115, Udyog Mandir No.1, Mahim West, Mumbai 400016',
+    planName:'Virtual Address', duration:'12 Months', startDate:'10/9/2026', endDate:'10/9/2027',
+    permittedUse:'GST Registration, Business Correspondence', applicationCode:'WA-20260910-00001'
+  };
+  var rendered = content.replace(/\{\{(\w+)\}\}/g, function(_,k){ return sample[k]!==undefined ? sample[k] : ''; });
+  var box = document.getElementById('agr-previewBox');
+  box.innerHTML = rendered;
+  box.style.display = 'block';
+}
+function publishAgreement(){
+  if(!currentAgreementId){ showToast('Save this as a draft first'); return; }
+  if(!confirm('Publish this version? It becomes the template used for every agreement generated from now on. Agreements already issued to customers are never affected.')) return;
+  var token = getAdminToken();
+  fetch('/api/agreement-templates/publish', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({id:currentAgreementId})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Publish failed');
+      showToast('Published');
+      loadAgreements();
+    })
+    .catch(function(e){ showToast(e.message); });
 }
 </script>
 </body>

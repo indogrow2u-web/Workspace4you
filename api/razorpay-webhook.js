@@ -123,7 +123,7 @@ module.exports = async function handler(req, res){
 
           if (app.email) {
             var resumeToken = generateResumeToken(app.application_code);
-            var resumeUrl = resumeToken ? (SITE_URL + '/apply.html?resume=' + resumeToken) : (SITE_URL + '/track.html');
+            var resumeUrl = resumeToken ? (SITE_URL + '/track.html?resume=' + resumeToken) : (SITE_URL + '/track.html');
             await sendApplicationReceiptEmail(
               { application_code: app.application_code, payment_amount: Math.round((payment.amount || 0) / 100), email: app.email },
               resumeUrl,

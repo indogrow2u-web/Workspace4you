@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Agreement | WorkSpace4You</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ws4y-shared.css">
+<style>
+.agreement-doc{background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:28px;max-height:520px;overflow-y:auto;font-size:14px;line-height:1.7;color:#111}
+.agreement-doc h2,.agreement-doc h3{margin:16px 0 8px}
+.agreement-doc h2:first-child{margin-top:0}
+</style>
+</head>
+<body>
+
+<nav class="ws4y-nav">
+  <a href="index.html" class="ws4y-logo"><img src="logo.png" alt="WorkSpace4You logo">WorkSpace<span>4You</span></a>
+  <a href="track.html" class="ws4y-nav-link">Track Application →</a>
+</nav>
+
+<div class="wrap" style="max-width:760px">
+  <div class="step active" id="loadingStep">
+    <div class="card" style="text-align:center;color:var(--gray)">Loading your agreement...</div>
+  </div>
+
+  <div class="step" id="mainStep">
+    <div class="card">
+      <h2>Your Virtual Office Agreement</h2>
+      <p class="sub">Application <span id="a-code">—</span> · Version <span id="a-version">—</span></p>
+
+      <div class="agreement-doc" id="a-content"></div>
+
+      <div id="acceptSection" style="margin-top:20px">
+        <label class="check-row"><input type="checkbox" id="a-checkbox" onchange="document.getElementById('acceptBtn').disabled=!this.checked"> I have read and agree to the Virtual Office Agreement.</label>
+        <button class="btn-primary" id="acceptBtn" onclick="acceptAgreement()" disabled>Accept Agreement</button>
+      </div>
+
+      <div id="acceptedSection" style="display:none;margin-top:20px">
+        <div class="info-box" style="background:#F0FDF4;border-color:#86EFAC;color:#065F46">✓ You accepted this agreement on <span id="a-acceptedAt">—</span>.</div>
+        <button class="btn-secondary" onclick="downloadAgreement()">Download Agreement</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+function goStep(id){
+  document.querySelectorAll('.step').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+var appCode = '', accessToken = '', snapshotHtml = '';
+
+function loadAgreement(){
+  fetch('/api/applications/track?code='+encodeURIComponent(appCode), {headers:{'Authorization':'Bearer '+accessToken}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not load your agreement');
+      var a = d.application;
+      if(!a.agreementSnapshot){
+        document.getElementById('loadingStep').innerHTML = '<div class="card" style="text-align:center;color:var(--gray)">No agreement has been generated for this application yet. Check <a href="track.html">Track Application</a> for your current status.</div>';
+        return;
+      }
+      document.getElementById('a-code').textContent = a.code;
+      document.getElementById('a-version').textContent = a.agreementVersion || '—';
+      document.getElementById('a-content').innerHTML = a.agreementSnapshot;
+      snapshotHtml = a.agreementSnapshot;
+
+      if(a.agreementStatus === 'accepted'){
+        document.getElementById('acceptSection').style.display = 'none';
+        document.getElementById('acceptedSection').style.display = 'block';
+        document.getElementById('a-acceptedAt').textContent = a.agreementAcceptedAt ? new Date(a.agreementAcceptedAt).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      }
+      goStep('mainStep');
+    })
+    .catch(function(e){
+      document.getElementById('loadingStep').innerHTML = '<div class="card" style="text-align:center;color:var(--red)">' + e.message + '</div>';
+    });
+}
+
+function acceptAgreement(){
+  var btn = document.getElementById('acceptBtn');
+  btn.textContent='Saving...'; btn.disabled=true;
+  fetch('/api/applications/accept-agreement', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+accessToken}, body:JSON.stringify({code:appCode})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not save your acceptance');
+      showToast('Agreement accepted ✓');
+      loadAgreement();
+    })
+    .catch(function(e){ showToast(e.message); btn.textContent='Accept Agreement'; btn.disabled=false; });
+}
+
+function downloadAgreement(){
+  var w = window.open('', '_blank');
+  if(!w){ showToast('Please allow pop-ups to download'); return; }
+  w.document.write('<html><head><title>Agreement ' + appCode + '</title><style>body{font-family:Arial,sans-serif;padding:24px;max-width:800px;margin:0 auto;line-height:1.7}</style></head><body>' + snapshotHtml + '</body></html>');
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 400);
+}
+
+(function init(){
+  var params = new URLSearchParams(window.location.search);
+  var resumeToken = params.get('resume');
+
+  if(resumeToken){
+    fetch('/api/applications/resume?token='+encodeURIComponent(resumeToken))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!d.success){ document.getElementById('loadingStep').innerHTML = '<div class="card" style="text-align:center;color:var(--red)">' + (d.error||'This link is no longer valid') + '</div>'; return; }
+        appCode = d.code; accessToken = d.accessToken;
+        localStorage.setItem('ws4y_app_code', appCode);
+        localStorage.setItem('ws4y_app_token', accessToken);
+        loadAgreement();
+      })
+      .catch(function(){ document.getElementById('loadingStep').innerHTML = '<div class="card" style="text-align:center;color:var(--red)">Could not open this link.</div>'; });
+    return;
+  }
+
+  appCode = localStorage.getItem('ws4y_app_code') || '';
+  accessToken = localStorage.getItem('ws4y_app_token') || '';
+  if(!appCode || !accessToken){
+    document.getElementById('loadingStep').innerHTML = '<div class="card" style="text-align:center;color:var(--gray)">No application found in this browser. Please use <a href="track.html">Track Application</a> first.</div>';
+    return;
+  }
+  loadAgreement();
+})();
+</script>
+</body>
+</html>

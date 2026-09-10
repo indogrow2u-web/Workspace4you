@@ -51,6 +51,11 @@
 
       <ul class="timeline" id="d-timeline"></ul>
 
+      <div id="d-activeBanner" style="display:none;background:#F0FDF4;border-color:#86EFAC" class="info-box">
+        <strong style="color:#065F46">Your Virtual Address is active ✓</strong>
+        <p id="d-activeDetails" style="margin-top:6px;color:#065F46"></p>
+      </div>
+
       <div id="d-actionRequired" style="display:none" class="warn-box">
         <strong>Action Required</strong>
         <p id="d-actionMsg" style="margin-top:6px"></p>
@@ -60,6 +65,15 @@
 
       <div id="d-continueBtnWrap" style="display:none">
         <button class="btn-primary" onclick="window.location.href='apply.html'">Continue Application →</button>
+      </div>
+      <div id="d-verifyBtnWrap" style="display:none">
+        <button class="btn-primary" onclick="window.location.href='verify.html'">Continue Verification →</button>
+      </div>
+      <div id="d-agreementBtnWrap" style="display:none">
+        <button class="btn-primary" onclick="window.location.href='agreement.html'">View Agreement →</button>
+      </div>
+      <div id="d-downloadBtnWrap" style="display:none">
+        <button class="btn-secondary" onclick="window.location.href='agreement.html'">Download Agreement</button>
       </div>
     </div>
 
@@ -175,14 +189,44 @@ function renderDashboard(d){
 
   document.getElementById('d-continueBtnWrap').style.display = (a.status === 'draft' || a.status === 'payment_pending') ? 'block' : 'none';
 
+  var needsVerification = a.paymentStatus === 'paid' && a.verificationStatus === 'not_started';
+  document.getElementById('d-verifyBtnWrap').style.display = (needsVerification || a.status === 'action_required') ? 'block' : 'none';
+
+  document.getElementById('d-agreementBtnWrap').style.display = a.agreementStatus === 'awaiting_acceptance' ? 'block' : 'none';
+  document.getElementById('d-downloadBtnWrap').style.display = (a.agreementStatus === 'accepted') ? 'block' : 'none';
+
+  document.getElementById('d-activeBanner').style.display = a.activationStatus === 'active' ? 'block' : 'none';
+  if(a.activationStatus === 'active'){
+    document.getElementById('d-activeDetails').textContent =
+      (a.businessName ? a.businessName + ' — ' : '') + 'valid until ' +
+      (a.expiryDate ? new Date(a.expiryDate).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}) : '—');
+  }
+
   document.getElementById('d-events').innerHTML = d.events.map(function(e){
     var when = new Date(e.created_at).toLocaleString('en-IN', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
     return '<li><span class="dot done">•</span><span><strong style="text-transform:capitalize">' + e.actor + ':</strong> ' + e.event + '<br><span style="color:var(--gray);font-size:12px">' + when + '</span></span></li>';
   }).join('') || '<li style="color:var(--gray)">No activity yet</li>';
 }
 
-// Same-browser return: if we already have a stored session, skip straight to the dashboard.
+// Resume link from an email (payment receipt, "action required", "agreement
+// ready" etc.) or same-browser return via a stored session.
 (function(){
+  var params = new URLSearchParams(window.location.search);
+  var resumeToken = params.get('resume');
+
+  if(resumeToken){
+    fetch('/api/applications/resume?token='+encodeURIComponent(resumeToken))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!d.success){ showToast(d.error||'This link is no longer valid'); return; }
+        localStorage.setItem('ws4y_app_code', d.code);
+        localStorage.setItem('ws4y_app_token', d.accessToken);
+        loadDashboard(d.code, d.accessToken);
+      })
+      .catch(function(){ showToast('Could not open this link. Please use Track Application below instead.'); });
+    return;
+  }
+
   var code = localStorage.getItem('ws4y_app_code');
   var token = localStorage.getItem('ws4y_app_token');
   if(code && token) loadDashboard(code, token);

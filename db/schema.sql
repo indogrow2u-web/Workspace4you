@@ -129,3 +129,66 @@ ALTER TABLE otp_challenges ALTER COLUMN mobile DROP NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_otp_mobile ON otp_challenges (mobile, purpose);
 CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_challenges (email, purpose);
+
+-- ============================================================
+-- Phase 2 — verification documents, agreement templates
+-- ============================================================
+
+-- Uploaded documents (identity proof etc). Stored as bytes directly in
+-- Postgres rather than a public object store, so every read must go
+-- through our own authenticated api/applications/document.js — never a
+-- public URL. Keep uploads small (enforced server-side, ~3MB cap).
+CREATE TABLE IF NOT EXISTS application_documents (
+  id              SERIAL PRIMARY KEY,
+  application_id  INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  doc_type        TEXT NOT NULL, -- identity | business_proof | other
+  filename        TEXT NOT NULL,
+  mime_type       TEXT NOT NULL,
+  size_bytes      INTEGER NOT NULL,
+  data            BYTEA NOT NULL,
+  uploaded_by     TEXT NOT NULL DEFAULT 'customer', -- customer | admin
+  note            TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_documents_application ON application_documents (application_id);
+
+-- Agreement templates. Only one row may be 'published' at a time — that's
+-- the version used whenever an admin generates a new agreement. Every
+-- application stores its own frozen agreement_snapshot (see applications
+-- table above), so publishing a new version here never changes an
+-- agreement already issued to a customer.
+CREATE TABLE IF NOT EXISTS agreement_templates (
+  id             SERIAL PRIMARY KEY,
+  version        TEXT NOT NULL,
+  content        TEXT NOT NULL, -- HTML with {{placeholders}}
+  status         TEXT NOT NULL DEFAULT 'draft', -- draft | published | archived
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  published_at   TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_agreement_templates_status ON agreement_templates (status);
+
+-- Seed one DRAFT starter template so the admin has something to review
+-- and customize rather than an empty editor. Deliberately left as a
+-- draft — nothing gets used for a real agreement until an admin reads
+-- it, edits it to reflect your actual terms, and explicitly publishes
+-- it from Admin -> Agreement Templates.
+INSERT INTO agreement_templates (version, content, status)
+SELECT 'v1.0-draft',
+$TEMPLATE$<h2>Virtual Office Service Agreement</h2>
+<p><em>DRAFT — review and edit every clause below before publishing. This is placeholder text, not legal advice.</em></p>
+<p>This agreement is made between <strong>INDO GROW</strong> ("Service Provider") and <strong>{{customerName}}</strong>, on behalf of <strong>{{businessName}}</strong> ("Client"), a {{businessType}} identified by {{businessIdentifier}}.</p>
+<h3>1. Service</h3>
+<p>The Service Provider grants the Client use of the business address <strong>{{virtualAddress}}</strong> as a registered/correspondence address, under the <strong>{{planName}}</strong> plan ({{duration}}).</p>
+<h3>2. Term</h3>
+<p>This agreement is effective from <strong>{{startDate}}</strong> to <strong>{{endDate}}</strong>, renewable by mutual agreement.</p>
+<h3>3. Permitted Use</h3>
+<p>The address may be used for: {{permittedUse}}.</p>
+<h3>4. Application Reference</h3>
+<p>Application ID: {{applicationCode}}</p>
+<h3>5. Cancellation</h3>
+<p>[Replace with your actual cancellation/refund policy.]</p>
+$TEMPLATE$,
+'draft'
+WHERE NOT EXISTS (SELECT 1 FROM agreement_templates);
