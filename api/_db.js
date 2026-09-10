@@ -17,10 +17,30 @@
 
 const { Pool } = require('pg');
 
-const connectionString =
+const rawConnectionString =
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_PRISMA_URL ||
   process.env.DATABASE_URL;
+
+// Supabase's pooled connection string includes "sslmode=require" — recent
+// pg versions treat that as an alias for "verify-full" and let it silently
+// win over an explicit `ssl` option passed to the Pool, which is what was
+// causing "self-signed certificate in certificate chain" even with
+// rejectUnauthorized: false set below. Stripping sslmode/ssl query params
+// here makes the explicit `ssl` option the only source of truth again.
+function stripSslModeParam(str) {
+  if (!str) return str;
+  try {
+    const url = new URL(str);
+    url.searchParams.delete('sslmode');
+    url.searchParams.delete('ssl');
+    return url.toString();
+  } catch (err) {
+    return str; // not a parseable URL — leave it alone
+  }
+}
+
+const connectionString = stripSslModeParam(rawConnectionString);
 
 let pool;
 function getPool() {
@@ -30,7 +50,7 @@ function getPool() {
     }
     pool = new Pool({
       connectionString,
-      ssl: { rejectUnauthorized: false }, // required by Supabase's managed Postgres
+      ssl: { rejectUnauthorized: false }, // required by Supabase's managed Postgres — see stripSslModeParam above for why this needs the query param stripped first
       max: 3
     });
   }
