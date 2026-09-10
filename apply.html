@@ -22,10 +22,10 @@
   <aside class="trust-sidebar">
     <div class="trust-card">
       <div class="trust-slideshow" id="trustSlideshow">
-        <img class="slide active" src="1.jpg" alt="Workspace4you main coworking hall, Mahim, Mumbai">
-        <img class="slide" src="5.jpg" alt="Workspace4you coworking desks, Mahim, Mumbai">
-        <img class="slide" src="6.jpg" alt="Workspace4you meeting room, Mahim, Mumbai">
-        <img class="slide" src="4.jpg" alt="Workspace4you private cabin, Mahim, Mumbai">
+        <img class="slide active" src="1.jpg" alt="Workspace4you main coworking hall, Mahim, Mumbai" fetchpriority="high">
+        <img class="slide" data-src="5.jpg" alt="Workspace4you coworking desks, Mahim, Mumbai">
+        <img class="slide" data-src="6.jpg" alt="Workspace4you meeting room, Mahim, Mumbai">
+        <img class="slide" data-src="4.jpg" alt="Workspace4you private cabin, Mahim, Mumbai">
         <div class="slide-tag">✨ Real Photos, No Stock</div>
         <div class="slide-caption" id="trustCaption">Main Workspace</div>
         <div class="slide-dots">
@@ -265,6 +265,14 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
 
 // ---- TRUST SIDEBAR: photo slideshow + testimonial carousel ----
 (function(){
+  // Only the first (visible) slide loads immediately (fetchpriority=high, in
+  // the initial HTML). The rest are deferred via data-src and swapped in
+  // here, at the bottom of the page, so they never compete with critical
+  // above-the-fold resources for bandwidth on slow ad-traffic connections.
+  document.querySelectorAll('#trustSlideshow .slide[data-src]').forEach(function(img){
+    img.src = img.dataset.src;
+    img.removeAttribute('data-src');
+  });
   var slides = document.querySelectorAll('#trustSlideshow .slide');
   var dots = document.querySelectorAll('#trustSlideshow .slide-dots .dot');
   var captionEl = document.getElementById('trustCaption');

@@ -85,7 +85,7 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif}
 /* APPLY LAYOUT — trust sidebar + wizard */
 .apply-shell{max-width:980px;margin:0 auto;padding:36px 20px 0;display:flex;gap:28px;align-items:flex-start}
 .apply-shell .wrap{flex:1;min-width:0;margin:0;padding:0 0 60px}
-.trust-sidebar{width:300px;flex-shrink:0;position:sticky;top:20px}
+.trust-sidebar{width:300px;flex-shrink:0;align-self:flex-start}
 .trust-card{background:#fff;border-radius:20px;box-shadow:0 4px 28px rgba(11,58,141,0.08);overflow:hidden;margin-bottom:14px}
 
 /* PHOTO SLIDESHOW */
@@ -132,7 +132,7 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif}
 
 @media(max-width:860px){
   .apply-shell{flex-direction:column;padding:16px 20px 0;gap:14px}
-  .trust-sidebar{width:100%;position:static}
+  .trust-sidebar{width:100%}
   .trust-slideshow{height:160px}
   .trust-secure{display:none}
 }
