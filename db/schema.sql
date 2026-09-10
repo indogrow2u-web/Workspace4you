@@ -2,10 +2,11 @@
 -- Workspace4You — Virtual Address Application System
 -- File: db/schema.sql
 --
--- Run this once against your Vercel Postgres (Neon) database
--- before deploying Phase 1. Easiest way: Vercel dashboard →
--- Storage → your Postgres database → "Query" tab → paste this
--- whole file → Run. Safe to re-run (everything is IF NOT EXISTS).
+-- Run this once against your Postgres database before deploying
+-- Phase 1. Easiest way: your database's dashboard → "Query" /
+-- "SQL Editor" tab → paste this whole file → Run. Safe to re-run
+-- (CREATE ... IF NOT EXISTS + ALTER ... ADD COLUMN IF NOT EXISTS
+-- throughout), including after the email-OTP change below.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS applications (
@@ -27,11 +28,15 @@ CREATE TABLE IF NOT EXISTS applications (
   plan_name              TEXT NOT NULL DEFAULT 'Virtual Address',
   duration               TEXT NOT NULL DEFAULT 'month', -- 'month' | 'annual'
 
-  -- Personal (Step 2)
+  -- Personal (Step 2). Verification currently runs over EMAIL (via Resend)
+  -- rather than SMS OTP — mobile is still collected but not verified yet.
+  -- Swapping back to SMS later just means re-populating mobile_verified_at
+  -- the same way; nothing else about the schema needs to change.
   full_name              TEXT,
   mobile                 TEXT,
   mobile_verified_at     TIMESTAMPTZ,
   email                  TEXT,
+  email_verified_at      TIMESTAMPTZ,
 
   -- Business (Step 3)
   business_type          TEXT, -- Proprietorship | Private Limited Company | LLP | Partnership | Other
@@ -81,6 +86,9 @@ CREATE TABLE IF NOT EXISTS applications (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Safe to run against a table created before the email-OTP switch.
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_applications_mobile ON applications (mobile);
 CREATE INDEX IF NOT EXISTS idx_applications_status ON applications (status);
 
@@ -95,17 +103,29 @@ CREATE TABLE IF NOT EXISTS application_events (
 
 CREATE INDEX IF NOT EXISTS idx_events_application ON application_events (application_id);
 
--- Mobile OTP challenges (signup verification + Track Application access)
+-- OTP challenges (signup verification + Track Application access).
+-- channel is 'email' for now (Resend) — SMS can be added later as a
+-- second channel value without touching this shape.
 CREATE TABLE IF NOT EXISTS otp_challenges (
   id                SERIAL PRIMARY KEY,
   application_id    INTEGER REFERENCES applications(id) ON DELETE CASCADE,
   purpose           TEXT NOT NULL, -- signup | track
-  mobile            TEXT NOT NULL,
-  msg91_request_id  TEXT,
+  channel           TEXT NOT NULL DEFAULT 'email', -- email | sms
+  mobile            TEXT,
+  email             TEXT,
+  otp_hash          TEXT,
   attempts          INTEGER NOT NULL DEFAULT 0,
   expires_at        TIMESTAMPTZ NOT NULL,
   verified_at       TIMESTAMPTZ,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Safe to run against a table created before the email-OTP switch (which
+-- had mobile NOT NULL and no channel/email/otp_hash columns).
+ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS channel TEXT NOT NULL DEFAULT 'email';
+ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS otp_hash TEXT;
+ALTER TABLE otp_challenges ALTER COLUMN mobile DROP NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_otp_mobile ON otp_challenges (mobile, purpose);
+CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_challenges (email, purpose);

@@ -35,8 +35,8 @@ module.exports = async function handler(req, res) {
     const app = await requireOwnedApplication(req, res, code);
     if (!app) return;
 
-    if (!app.full_name || !app.mobile_verified_at) {
-      return res.status(400).json({ error: 'Please complete your personal details and verify your mobile number first' });
+    if (!app.full_name || !app.email_verified_at) {
+      return res.status(400).json({ error: 'Please complete your personal details and verify your email address first' });
     }
 
     const config = await readConfig();

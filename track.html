@@ -22,18 +22,18 @@
   <div class="step active" id="lookupStep">
     <div class="card">
       <h2>Track Your Application</h2>
-      <p class="sub">Enter your Application ID and mobile number to view your status.</p>
+      <p class="sub">Enter your Application ID and email address to view your status.</p>
       <div class="form-group"><label>Application ID *</label><input type="text" id="t-code" placeholder="WA-20260910-00001"></div>
       <div class="form-group">
-        <label>Mobile Number *</label>
+        <label>Email Address *</label>
         <div style="display:flex;gap:8px">
-          <input type="tel" id="t-mobile" placeholder="10-digit mobile number" style="flex:1">
-          <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="t-sendBtn" onclick="sendTrackOtp()">Send OTP</button>
+          <input type="email" id="t-email" placeholder="your@email.com" style="flex:1">
+          <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="t-sendBtn" onclick="sendTrackOtp()">Send Code</button>
         </div>
       </div>
       <div class="form-group" id="t-otpGroup" style="display:none">
-        <label>Enter OTP</label>
-        <input type="text" id="t-otp" placeholder="6-digit OTP" inputmode="numeric">
+        <label>Enter Verification Code</label>
+        <input type="text" id="t-otp" placeholder="6-digit code" inputmode="numeric">
       </div>
       <div class="error-msg" id="t-err"></div>
       <button class="btn-primary" id="t-viewBtn" style="display:none" onclick="verifyTrackOtp()">View Application →</button>
@@ -79,38 +79,38 @@ function showToast(msg){
   setTimeout(function(){ t.classList.remove('show'); }, 3500);
 }
 
-var trackCode = '', trackMobile = '';
+var trackCode = '', trackEmail = '';
 
 function sendTrackOtp(){
   var code = document.getElementById('t-code').value.trim().toUpperCase();
-  var mobile = document.getElementById('t-mobile').value.trim();
+  var email = document.getElementById('t-email').value.trim();
   var err = document.getElementById('t-err'); err.style.display='none';
   if(!code){ err.textContent='Enter your Application ID'; err.style.display='block'; return; }
-  if(mobile.replace(/\D/g,'').length < 10){ err.textContent='Enter a valid 10-digit mobile number'; err.style.display='block'; return; }
-  trackCode = code; trackMobile = mobile;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent='Enter a valid email address'; err.style.display='block'; return; }
+  trackCode = code; trackEmail = email;
   var btn = document.getElementById('t-sendBtn');
   btn.textContent='Sending...'; btn.disabled=true;
-  fetch('/api/applications/otp-request', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:code, mobile:mobile, purpose:'track'})})
+  fetch('/api/applications/otp-request', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:code, email:email, purpose:'track'})})
     .then(function(r){return r.json();})
     .then(function(){
       document.getElementById('t-otpGroup').style.display = 'block';
       document.getElementById('t-viewBtn').style.display = 'block';
-      showToast('If that Application ID and mobile number match, an OTP has been sent.');
+      showToast('If that Application ID and email match, a verification code has been sent.');
     })
     .catch(function(){ err.textContent='Something went wrong. Please try again.'; err.style.display='block'; })
-    .finally(function(){ btn.textContent='Resend OTP'; btn.disabled=false; });
+    .finally(function(){ btn.textContent='Resend Code'; btn.disabled=false; });
 }
 
 function verifyTrackOtp(){
   var otp = document.getElementById('t-otp').value.trim();
   var err = document.getElementById('t-err'); err.style.display='none';
-  if(!otp){ err.textContent='Enter the OTP'; err.style.display='block'; return; }
+  if(!otp){ err.textContent='Enter the verification code'; err.style.display='block'; return; }
   var btn = document.getElementById('t-viewBtn');
   btn.textContent='Verifying...'; btn.disabled=true;
-  fetch('/api/applications/otp-verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:trackCode, mobile:trackMobile, otp:otp, purpose:'track'})})
+  fetch('/api/applications/otp-verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:trackCode, email:trackEmail, otp:otp, purpose:'track'})})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(!d.success) throw new Error(d.error||'Incorrect OTP');
+      if(!d.success) throw new Error(d.error||'Incorrect code');
       localStorage.setItem('ws4y_app_code', d.code);
       localStorage.setItem('ws4y_app_token', d.accessToken);
       loadDashboard(d.code, d.accessToken);

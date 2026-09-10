@@ -1,14 +1,14 @@
 // ============================================================
 // Workspace4You — Notifications (email via Resend, SMS stub)
-// Env vars: RESEND_API_KEY, RESEND_FROM_EMAIL (optional)
+// Env vars: RESEND_API_KEY, RESEND_FROM_EMAIL (optional — the
+// "from" address must be at a domain verified in Resend)
 //
-// SMS receipts are intentionally NOT wired up yet: a transactional
-// (non-OTP) SMS to Indian numbers needs its own DLT-registered
-// template with MSG91, separate from the OTP template. sendSms()
-// below is a safe no-op until MSG91_SMS_TEMPLATE_ID/MSG91_SMS_SENDER_ID
-// are configured, so callers can invoke it unconditionally now and
-// it will start working the moment that template exists — no code
-// changes needed later.
+// OTP verification currently runs over email (sendOtpEmail below),
+// not SMS — see api/_otp.js. SMS (both OTP and plain receipts) is
+// on hold pending a DLT-registered MSG91 template; sendSms() is a
+// safe no-op until MSG91_SMS_TEMPLATE_ID/MSG91_SMS_SENDER_ID are
+// configured, so callers can invoke it unconditionally now and it
+// will start working the moment that template exists.
 // ============================================================
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -63,6 +63,18 @@ function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+async function sendOtpEmail(email, otp) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#101828">
+      <h2 style="color:#0B3A8D">Workspace4You</h2>
+      <p>Your verification code is:</p>
+      <p style="font-size:32px;font-weight:800;letter-spacing:6px;color:#0B3A8D">${escapeHtml(otp)}</p>
+      <p style="color:#6B7280;font-size:13px">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
+    </div>
+  `;
+  return sendEmail(email, `${otp} is your Workspace4You verification code`, html);
+}
+
 async function sendApplicationReceiptEmail(app, resumeUrl, phoneDisplay) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">
@@ -79,4 +91,4 @@ async function sendApplicationReceiptEmail(app, resumeUrl, phoneDisplay) {
   return sendEmail(app.email, `Workspace4You — Application ${app.application_code} received`, html);
 }
 
-module.exports = { sendEmail, sendSms, sendApplicationReceiptEmail };
+module.exports = { sendEmail, sendSms, sendOtpEmail, sendApplicationReceiptEmail };

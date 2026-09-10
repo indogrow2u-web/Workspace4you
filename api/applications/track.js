@@ -37,6 +37,7 @@ module.exports = async function handler(req, res) {
         mobile: app.mobile,
         mobileVerified: !!app.mobile_verified_at,
         email: app.email,
+        emailVerified: !!app.email_verified_at,
         businessType: app.business_type,
         businessName: app.business_name,
         addressUsage: app.address_usage,

@@ -42,6 +42,7 @@ module.exports = async function handler(req, res) {
       await sql`
         UPDATE applications SET
           full_name = ${clip(d.fullName, 120)},
+          mobile = ${clip(d.mobile, 20)},
           email = ${clip(d.email, 160)},
           updated_at = now()
         WHERE id = ${app.id}

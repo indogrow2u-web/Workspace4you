@@ -695,7 +695,7 @@ function renderVaDetail(a, events){
     '<h2 style="font-family:\'Poppins\',sans-serif">'+esc(a.application_code)+'</h2>'+
     '<span class="status-badge status-filled">'+esc(VA_STATUS_LABELS[a.status]||a.status)+'</span></div>'+
     '<div class="editor-grid">'+
-      '<div class="editor-card"><h3>Customer</h3>'+vaField('Name',a.full_name)+vaField('Mobile',a.mobile+(a.mobile_verified_at?' ✓ verified':' (unverified)'))+vaField('Email',a.email)+'</div>'+
+      '<div class="editor-card"><h3>Customer</h3>'+vaField('Name',a.full_name)+vaField('Mobile',a.mobile+(a.mobile_verified_at?' ✓ verified':' (not verified — SMS OTP on hold)'))+vaField('Email',a.email+(a.email_verified_at?' ✓ verified':' (unverified)'))+'</div>'+
       '<div class="editor-card"><h3>Business</h3>'+vaField('Type',a.business_type)+vaField('Business Name',a.business_name)+vaField('Activity',a.business_activity)+vaField('PAN',a.pan)+vaField('GSTIN',a.gstin)+vaField('Udyam',a.udyam_number)+vaField('CIN',a.cin)+vaField('LLPIN',a.llpin)+(a.no_gst_udyam?vaField('Note','No GST/Udyam — flagged for manual verification'):'')+'</div>'+
       '<div class="editor-card"><h3>Address Usage</h3>'+vaField('Selected uses',addressUsage)+vaField('Inventory receiving requested',a.inventory_requested?'YES — needs admin decision':'No')+'</div>'+
       '<div class="editor-card"><h3>Payment</h3>'+vaField('Plan',a.plan_name+' ('+a.duration+')')+vaField('Amount',a.payment_amount?('₹'+parseInt(a.payment_amount).toLocaleString('en-IN')):'—')+vaField('Payment Status',a.payment_status)+vaField('Razorpay Payment ID',a.razorpay_payment_id)+vaField('Razorpay Order ID',a.razorpay_order_id)+'</div>'+

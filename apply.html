@@ -45,22 +45,22 @@
       <h2>Your Details</h2>
       <p class="sub">Let's get your application started.</p>
       <div class="form-group"><label>Full Name *</label><input type="text" id="p-name" placeholder="Your full name"></div>
+      <div class="form-group"><label>Mobile Number *</label><input type="tel" id="p-mobile" placeholder="10-digit mobile number"></div>
       <div class="form-group">
-        <label>Mobile Number *</label>
+        <label>Email Address *</label>
         <div style="display:flex;gap:8px">
-          <input type="tel" id="p-mobile" placeholder="10-digit mobile number" style="flex:1">
-          <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="sendOtpBtn" onclick="sendOtp()">Send OTP</button>
+          <input type="email" id="p-email" placeholder="your@email.com" style="flex:1">
+          <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="sendOtpBtn" onclick="sendOtp()">Send Code</button>
         </div>
       </div>
       <div class="form-group" id="otpGroup" style="display:none">
-        <label>Enter OTP</label>
+        <label>Enter Verification Code</label>
         <div style="display:flex;gap:8px">
-          <input type="text" id="p-otp" placeholder="6-digit OTP" style="flex:1" inputmode="numeric">
+          <input type="text" id="p-otp" placeholder="6-digit code" style="flex:1" inputmode="numeric">
           <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="verifyOtpBtn" onclick="verifyOtp()">Verify</button>
         </div>
       </div>
-      <div id="mobileVerifiedNote" style="display:none;color:var(--green);font-weight:700;font-size:13px;margin:-8px 0 14px">✓ Mobile number verified</div>
-      <div class="form-group"><label>Email Address *</label><input type="email" id="p-email" placeholder="your@email.com"></div>
+      <div id="emailVerifiedNote" style="display:none;color:var(--green);font-weight:700;font-size:13px;margin:-8px 0 14px">✓ Email verified</div>
       <div class="error-msg" id="step2Err"></div>
       <button class="btn-primary" onclick="submitPersonal()" id="step2Btn">Continue →</button>
     </div>
@@ -225,37 +225,39 @@ function startApplication(){
     .finally(function(){ btn.textContent = 'Continue →'; btn.disabled = false; });
 }
 
-// ---- STEP 2: PERSONAL + OTP ----
-var mobileVerified = false;
+// ---- STEP 2: PERSONAL + EMAIL VERIFICATION ----
+// Mobile OTP is on hold (pending SMS provider DLT approval) — verification
+// currently runs over email via Resend instead. Mobile is still collected.
+var emailVerified = false;
 function sendOtp(){
-  var mobile = document.getElementById('p-mobile').value.trim();
-  if(mobile.replace(/\D/g,'').length < 10){ showToast('Enter a valid 10-digit mobile number'); return; }
+  var email = document.getElementById('p-email').value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Enter a valid email address'); return; }
   var btn = document.getElementById('sendOtpBtn');
   btn.textContent = 'Sending...'; btn.disabled = true;
-  fetch('/api/applications/otp-request', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, mobile:mobile, purpose:'signup'})})
+  fetch('/api/applications/otp-request', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, email:email, purpose:'signup'})})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(!d.success) throw new Error(d.error||'Could not send OTP');
+      if(!d.success) throw new Error(d.error||'Could not send code');
       document.getElementById('otpGroup').style.display = 'block';
-      showToast('OTP sent to your mobile');
+      showToast('Verification code sent to your email');
     })
     .catch(function(err){ showToast(err.message); })
-    .finally(function(){ btn.textContent = 'Resend OTP'; btn.disabled = false; });
+    .finally(function(){ btn.textContent = 'Resend Code'; btn.disabled = false; });
 }
 function verifyOtp(){
-  var mobile = document.getElementById('p-mobile').value.trim();
+  var email = document.getElementById('p-email').value.trim();
   var otp = document.getElementById('p-otp').value.trim();
-  if(!otp){ showToast('Enter the OTP'); return; }
+  if(!otp){ showToast('Enter the verification code'); return; }
   var btn = document.getElementById('verifyOtpBtn');
   btn.textContent = 'Verifying...'; btn.disabled = true;
-  fetch('/api/applications/otp-verify', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, mobile:mobile, otp:otp, purpose:'signup'})})
+  fetch('/api/applications/otp-verify', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, email:email, otp:otp, purpose:'signup'})})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(!d.success) throw new Error(d.error||'Incorrect OTP');
-      mobileVerified = true;
-      document.getElementById('mobileVerifiedNote').style.display = 'block';
+      if(!d.success) throw new Error(d.error||'Incorrect code');
+      emailVerified = true;
+      document.getElementById('emailVerifiedNote').style.display = 'block';
       document.getElementById('otpGroup').style.display = 'none';
-      showToast('Mobile verified ✓');
+      showToast('Email verified ✓');
     })
     .catch(function(err){ showToast(err.message); })
     .finally(function(){ btn.textContent = 'Verify'; btn.disabled = false; });
@@ -263,13 +265,14 @@ function verifyOtp(){
 function submitPersonal(){
   var err = document.getElementById('step2Err'); err.style.display='none';
   var name = document.getElementById('p-name').value.trim();
+  var mobile = document.getElementById('p-mobile').value.trim();
   var email = document.getElementById('p-email').value.trim();
   if(!name){ err.textContent='Please enter your full name'; err.style.display='block'; return; }
-  if(!mobileVerified){ err.textContent='Please verify your mobile number'; err.style.display='block'; return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent='Please enter a valid email address'; err.style.display='block'; return; }
+  if(mobile.replace(/\D/g,'').length < 10){ err.textContent='Please enter a valid 10-digit mobile number'; err.style.display='block'; return; }
+  if(!emailVerified){ err.textContent='Please verify your email address'; err.style.display='block'; return; }
   var btn = document.getElementById('step2Btn');
   btn.textContent='Saving...'; btn.disabled=true;
-  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'personal', data:{fullName:name, email:email}})})
+  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'personal', data:{fullName:name, mobile:mobile, email:email}})})
     .then(function(r){return r.json();})
     .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(3); })
     .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
@@ -406,13 +409,13 @@ function proceedToPayment(){
       renderPaymentSummary(); goStep(5);
     } else if(a.businessType){
       selectBizType(a.businessType); goStep(4);
-    } else if(a.mobileVerified && a.fullName){
+    } else if(a.emailVerified && a.fullName){
       goStep(3);
     } else {
       if(a.fullName) document.getElementById('p-name').value = a.fullName;
       if(a.email) document.getElementById('p-email').value = a.email;
       if(a.mobile) document.getElementById('p-mobile').value = a.mobile.replace(/^91/, '');
-      if(a.mobileVerified){ mobileVerified = true; document.getElementById('mobileVerifiedNote').style.display = 'block'; }
+      if(a.emailVerified){ emailVerified = true; document.getElementById('emailVerifiedNote').style.display = 'block'; }
       goStep(2);
     }
   }
