@@ -122,6 +122,7 @@ tr:hover td{background:#FAFBFF}
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('leads',this)">Leads & Payments</button>
+    <button class="tab" onclick="switchTab('vaApps',this)">Virtual Address</button>
     <button class="tab" onclick="switchTab('editor',this)">Site Content</button>
     <button class="tab" onclick="switchTab('setup',this)">Setup Guide</button>
   </div>
@@ -223,6 +224,52 @@ tr:hover td{background:#FAFBFF}
         <button class="save-btn" onclick="saveHours()" id="hoursSaveBtn">Save & Update Website</button>
         <div class="save-note" id="hoursOutput"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- VIRTUAL ADDRESS APPLICATIONS TAB -->
+  <div id="tab-vaApps" style="display:none">
+    <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#92400E;font-weight:600">
+      Phase 1 — view only. Verification, approval, agreement generation and activation actions land in Phase 2.
+    </div>
+    <div class="stats-row" id="va-stats"></div>
+
+    <div class="panel" id="va-listPanel">
+      <div class="panel-header">
+        <div class="panel-title">Virtual Address Applications</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <input class="search-box" id="va-searchBox" placeholder="Search ID, name, business, mobile, GSTIN..." oninput="renderVaTable()">
+          <div class="filter-row" id="va-filterRow">
+            <button class="filter-btn active" onclick="setVaFilter('all',this)">All</button>
+            <button class="filter-btn" onclick="setVaFilter('draft',this)">Draft</button>
+            <button class="filter-btn" onclick="setVaFilter('payment_pending',this)">Payment Pending</button>
+            <button class="filter-btn" onclick="setVaFilter('verification_pending',this)">Verification Pending</button>
+            <button class="filter-btn" onclick="setVaFilter('action_required',this)">Action Required</button>
+            <button class="filter-btn" onclick="setVaFilter('under_review',this)">Under Review</button>
+            <button class="filter-btn" onclick="setVaFilter('approved',this)">Approved</button>
+            <button class="filter-btn" onclick="setVaFilter('active',this)">Active</button>
+            <button class="filter-btn" onclick="setVaFilter('rejected',this)">Rejected</button>
+          </div>
+          <button class="refresh-btn" onclick="loadVaApplications()">Refresh</button>
+        </div>
+      </div>
+      <div id="va-loadingBar" style="display:none"><div class="loading-bar"></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Application ID</th><th>Name</th><th>Business</th><th>Mobile</th>
+              <th>Plan</th><th>Payment</th><th>Status</th><th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="va-body"><tr><td colspan="8" class="no-data">Loading applications...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" id="va-detailPanel" style="display:none;padding:24px">
+      <button class="refresh-btn" style="margin-bottom:16px" onclick="closeVaDetail()">← Back to list</button>
+      <div id="va-detailBody">Loading...</div>
     </div>
   </div>
 
@@ -339,6 +386,7 @@ function doLogout(){
 // ---- TABS ----
 function switchTab(name,btn){
   if(name==='editor') loadEditorValues();
+  if(name==='vaApps') loadVaApplications();
   if(name==='setup'){
     var saved=localStorage.getItem(SHEET_URL_KEY);
     if(saved) document.getElementById('sheetUrlInput').value=saved;
@@ -539,6 +587,129 @@ function loadEditorValues(){
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},3000);}
 
 setInterval(loadLeads, 60000);
+
+// ---- VIRTUAL ADDRESS APPLICATIONS (Phase 1: view only) ----
+var VA_STATUS_LABELS = {
+  draft:'Draft', payment_pending:'Payment Pending', payment_received:'Payment Received',
+  verification_pending:'Verification Pending', action_required:'Action Required', under_review:'Under Review',
+  approved:'Approved', rejected:'Rejected', agreement_pending:'Agreement Pending', agreement_sent:'Agreement Sent',
+  agreement_accepted:'Agreement Accepted', ready_for_activation:'Ready for Activation', active:'Active',
+  expired:'Expired', terminated:'Terminated'
+};
+var allVaApps = [];
+var currentVaFilter = 'all';
+
+function loadVaApplications(){
+  var token = getAdminToken();
+  if(!token){ doLogout(); return; }
+  document.getElementById('va-loadingBar').style.display='block';
+  fetch('/api/applications/admin-list', {headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){
+      if(r.status===401){ doLogout(); showToast('Session expired — please log in again'); throw new Error('Session expired'); }
+      return r.json();
+    })
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not load applications');
+      allVaApps = d.applications || [];
+      renderVaStats();
+      renderVaTable();
+    })
+    .catch(function(err){
+      if(err.message!=='Session expired'){
+        document.getElementById('va-body').innerHTML='<tr><td colspan="8" class="no-data">Could not load applications.<br><span style="font-size:12px;color:var(--red)">'+esc(err.message)+'</span><br><span style="font-size:12px">Make sure the database is provisioned (see setup notes) and DATABASE env vars are set.</span></td></tr>';
+      }
+    })
+    .finally(function(){ document.getElementById('va-loadingBar').style.display='none'; });
+}
+
+function renderVaStats(){
+  var paid = allVaApps.filter(function(a){return a.payment_status==='paid';}).length;
+  var pending = allVaApps.filter(function(a){return ['verification_pending','under_review','action_required'].indexOf(a.status)!==-1;}).length;
+  var active = allVaApps.filter(function(a){return a.status==='active';}).length;
+  document.getElementById('va-stats').innerHTML =
+    '<div class="stat-card"><div class="stat-label">Total Applications</div><div class="stat-val blue">'+allVaApps.length+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Paid</div><div class="stat-val green">'+paid+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Awaiting Review</div><div class="stat-val gold">'+pending+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Active</div><div class="stat-val green">'+active+'</div></div>';
+}
+
+function setVaFilter(f,btn){
+  currentVaFilter=f;
+  document.querySelectorAll('#va-filterRow .filter-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderVaTable();
+}
+
+function renderVaTable(){
+  var q = document.getElementById('va-searchBox').value.toLowerCase();
+  var filtered = allVaApps.filter(function(a){
+    var mf = currentVaFilter==='all' || a.status===currentVaFilter;
+    var ms = !q || [a.application_code,a.full_name,a.business_name,a.mobile,a.gstin,a.cin,a.llpin].some(function(v){return (v||'').toLowerCase().includes(q);});
+    return mf && ms;
+  });
+  var tbody = document.getElementById('va-body');
+  if(filtered.length===0){ tbody.innerHTML='<tr><td colspan="8" class="no-data">No applications found</td></tr>'; return; }
+  tbody.innerHTML = filtered.map(function(a){
+    var sc = a.status==='active'?'status-paid':(a.status==='rejected'||a.status==='terminated')?'status-dropped':'status-filled';
+    var payBadge = a.payment_status==='paid' ? '<span class="status-badge status-paid">Paid'+(a.payment_amount?' · Rs '+parseInt(a.payment_amount).toLocaleString('en-IN'):'')+'</span>' : '<span class="status-badge status-filled">'+esc(a.payment_status)+'</span>';
+    var created = a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN') : '—';
+    return '<tr style="cursor:pointer" onclick="openVaDetail(\''+esc(a.application_code)+'\')">'+
+      '<td style="font-weight:700;color:var(--blue)">'+esc(a.application_code)+'</td>'+
+      '<td style="font-weight:600">'+esc(a.full_name||'—')+'</td>'+
+      '<td>'+esc(a.business_name||'—')+'</td>'+
+      '<td>'+esc(a.mobile||'—')+'</td>'+
+      '<td style="font-size:12px">'+esc(a.plan_name||'—')+' ('+esc(a.duration||'—')+')'+(a.inventory_requested?' <span title="Inventory receiving requested">📦</span>':'')+'</td>'+
+      '<td>'+payBadge+'</td>'+
+      '<td><span class="status-badge '+sc+'">'+esc(VA_STATUS_LABELS[a.status]||a.status)+'</span></td>'+
+      '<td style="font-size:12px;color:var(--gray)">'+created+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function openVaDetail(code){
+  var token = getAdminToken();
+  document.getElementById('va-listPanel').style.display='none';
+  document.getElementById('va-detailPanel').style.display='block';
+  document.getElementById('va-detailBody').innerHTML='Loading...';
+  fetch('/api/applications/admin-detail?code='+encodeURIComponent(code), {headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not load application');
+      renderVaDetail(d.application, d.events);
+    })
+    .catch(function(err){ document.getElementById('va-detailBody').innerHTML='<span style="color:var(--red)">'+esc(err.message)+'</span>'; });
+}
+
+function closeVaDetail(){
+  document.getElementById('va-detailPanel').style.display='none';
+  document.getElementById('va-listPanel').style.display='block';
+}
+
+function vaField(label,val){
+  return '<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--gray);text-transform:uppercase;font-weight:700;letter-spacing:.5px">'+label+'</div><div style="font-size:14px;font-weight:600">'+esc(val||'—')+'</div></div>';
+}
+
+function renderVaDetail(a, events){
+  var addressUsage = Array.isArray(a.address_usage) ? a.address_usage.join(', ') : '';
+  var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">'+
+    '<h2 style="font-family:\'Poppins\',sans-serif">'+esc(a.application_code)+'</h2>'+
+    '<span class="status-badge status-filled">'+esc(VA_STATUS_LABELS[a.status]||a.status)+'</span></div>'+
+    '<div class="editor-grid">'+
+      '<div class="editor-card"><h3>Customer</h3>'+vaField('Name',a.full_name)+vaField('Mobile',a.mobile+(a.mobile_verified_at?' ✓ verified':' (unverified)'))+vaField('Email',a.email)+'</div>'+
+      '<div class="editor-card"><h3>Business</h3>'+vaField('Type',a.business_type)+vaField('Business Name',a.business_name)+vaField('Activity',a.business_activity)+vaField('PAN',a.pan)+vaField('GSTIN',a.gstin)+vaField('Udyam',a.udyam_number)+vaField('CIN',a.cin)+vaField('LLPIN',a.llpin)+(a.no_gst_udyam?vaField('Note','No GST/Udyam — flagged for manual verification'):'')+'</div>'+
+      '<div class="editor-card"><h3>Address Usage</h3>'+vaField('Selected uses',addressUsage)+vaField('Inventory receiving requested',a.inventory_requested?'YES — needs admin decision':'No')+'</div>'+
+      '<div class="editor-card"><h3>Payment</h3>'+vaField('Plan',a.plan_name+' ('+a.duration+')')+vaField('Amount',a.payment_amount?('₹'+parseInt(a.payment_amount).toLocaleString('en-IN')):'—')+vaField('Payment Status',a.payment_status)+vaField('Razorpay Payment ID',a.razorpay_payment_id)+vaField('Razorpay Order ID',a.razorpay_order_id)+'</div>'+
+      '<div class="editor-card"><h3>Verification &amp; Review</h3>'+vaField('Verification Status',a.verification_status)+vaField('Admin Review Status',a.admin_review_status)+vaField('Info Requested',a.info_requested)+'</div>'+
+      '<div class="editor-card"><h3>Agreement &amp; Activation</h3>'+vaField('Agreement Version',a.agreement_version)+vaField('Agreement Status',a.agreement_status)+vaField('Activation Status',a.activation_status)+vaField('Activation Date',a.activation_date)+'</div>'+
+    '</div>'+
+    '<div class="panel" style="margin-top:20px;padding:20px"><h3 style="font-family:\'Poppins\',sans-serif;font-size:14px;margin-bottom:14px">Activity History</h3>'+
+    (events&&events.length ? events.map(function(e){
+      var when = new Date(e.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      return '<div style="padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:13px"><strong style="text-transform:capitalize">'+esc(e.actor)+':</strong> '+esc(e.event)+' <span style="color:var(--gray);font-size:11px">— '+when+'</span></div>';
+    }).join('') : '<div style="color:var(--gray);font-size:13px">No activity yet</div>')+
+    '</div>';
+  document.getElementById('va-detailBody').innerHTML = html;
+}
 </script>
 </body>
 </html>

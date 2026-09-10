@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track Application | WorkSpace4You</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ws4y-shared.css">
+</head>
+<body>
+
+<nav class="ws4y-nav">
+  <a href="index.html" class="ws4y-logo"><img src="logo.png" alt="WorkSpace4You logo">WorkSpace<span>4You</span></a>
+  <a href="apply.html" class="ws4y-nav-link">New Application →</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- LOOKUP -->
+  <div class="step active" id="lookupStep">
+    <div class="card">
+      <h2>Track Your Application</h2>
+      <p class="sub">Enter your Application ID and mobile number to view your status.</p>
+      <div class="form-group"><label>Application ID *</label><input type="text" id="t-code" placeholder="WA-20260910-00001"></div>
+      <div class="form-group">
+        <label>Mobile Number *</label>
+        <div style="display:flex;gap:8px">
+          <input type="tel" id="t-mobile" placeholder="10-digit mobile number" style="flex:1">
+          <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="t-sendBtn" onclick="sendTrackOtp()">Send OTP</button>
+        </div>
+      </div>
+      <div class="form-group" id="t-otpGroup" style="display:none">
+        <label>Enter OTP</label>
+        <input type="text" id="t-otp" placeholder="6-digit OTP" inputmode="numeric">
+      </div>
+      <div class="error-msg" id="t-err"></div>
+      <button class="btn-primary" id="t-viewBtn" style="display:none" onclick="verifyTrackOtp()">View Application →</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="step" id="dashStep">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <h2 id="d-code" style="margin-bottom:0">APPLICATION</h2>
+        <span class="status-badge status-yellow" id="d-statusBadge">—</span>
+      </div>
+      <p class="sub" id="d-plan">—</p>
+
+      <ul class="timeline" id="d-timeline"></ul>
+
+      <div id="d-actionRequired" style="display:none" class="warn-box">
+        <strong>Action Required</strong>
+        <p id="d-actionMsg" style="margin-top:6px"></p>
+      </div>
+
+      <div id="d-underReview" style="display:none" class="info-box">Your application is currently being reviewed by our team.</div>
+
+      <div id="d-continueBtnWrap" style="display:none">
+        <button class="btn-primary" onclick="window.location.href='apply.html'">Continue Application →</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:16px;margin-bottom:14px">Application History</h2>
+      <ul class="timeline" id="d-events"></ul>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+
+var trackCode = '', trackMobile = '';
+
+function sendTrackOtp(){
+  var code = document.getElementById('t-code').value.trim().toUpperCase();
+  var mobile = document.getElementById('t-mobile').value.trim();
+  var err = document.getElementById('t-err'); err.style.display='none';
+  if(!code){ err.textContent='Enter your Application ID'; err.style.display='block'; return; }
+  if(mobile.replace(/\D/g,'').length < 10){ err.textContent='Enter a valid 10-digit mobile number'; err.style.display='block'; return; }
+  trackCode = code; trackMobile = mobile;
+  var btn = document.getElementById('t-sendBtn');
+  btn.textContent='Sending...'; btn.disabled=true;
+  fetch('/api/applications/otp-request', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:code, mobile:mobile, purpose:'track'})})
+    .then(function(r){return r.json();})
+    .then(function(){
+      document.getElementById('t-otpGroup').style.display = 'block';
+      document.getElementById('t-viewBtn').style.display = 'block';
+      showToast('If that Application ID and mobile number match, an OTP has been sent.');
+    })
+    .catch(function(){ err.textContent='Something went wrong. Please try again.'; err.style.display='block'; })
+    .finally(function(){ btn.textContent='Resend OTP'; btn.disabled=false; });
+}
+
+function verifyTrackOtp(){
+  var otp = document.getElementById('t-otp').value.trim();
+  var err = document.getElementById('t-err'); err.style.display='none';
+  if(!otp){ err.textContent='Enter the OTP'; err.style.display='block'; return; }
+  var btn = document.getElementById('t-viewBtn');
+  btn.textContent='Verifying...'; btn.disabled=true;
+  fetch('/api/applications/otp-verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:trackCode, mobile:trackMobile, otp:otp, purpose:'track'})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Incorrect OTP');
+      localStorage.setItem('ws4y_app_code', d.code);
+      localStorage.setItem('ws4y_app_token', d.accessToken);
+      loadDashboard(d.code, d.accessToken);
+    })
+    .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
+    .finally(function(){ btn.textContent='View Application →'; btn.disabled=false; });
+}
+
+var STATUS_LABELS = {
+  draft:'Application Started', payment_pending:'Payment Pending', payment_received:'Payment Received',
+  verification_pending:'Verification Pending', action_required:'Action Required', under_review:'Under Review',
+  approved:'Approved', rejected:'Rejected', agreement_pending:'Agreement Pending', agreement_sent:'Agreement Sent',
+  agreement_accepted:'Agreement Accepted', ready_for_activation:'Ready for Activation', active:'Active',
+  expired:'Expired', terminated:'Terminated'
+};
+
+function loadDashboard(code, token){
+  fetch('/api/applications/track?code='+encodeURIComponent(code), {headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not load application');
+      renderDashboard(d);
+    })
+    .catch(function(e){ showToast(e.message); });
+}
+
+function renderDashboard(d){
+  var a = d.application;
+  document.getElementById('lookupStep').classList.remove('active');
+  document.getElementById('dashStep').classList.add('active');
+
+  document.getElementById('d-code').textContent = 'APPLICATION #' + a.code;
+  document.getElementById('d-plan').textContent = 'Virtual Address · ' + (a.duration === 'annual' ? '12-Month Plan' : 'Monthly');
+
+  var badge = document.getElementById('d-statusBadge');
+  badge.textContent = STATUS_LABELS[a.status] || a.status;
+  badge.className = 'status-badge ' + (
+    a.status === 'active' ? 'status-green' :
+    (a.status === 'rejected' || a.status === 'terminated') ? 'status-red' :
+    a.status === 'action_required' ? 'status-yellow' : 'status-gray'
+  );
+
+  var steps = [
+    { label: 'Application', done: true },
+    { label: 'Payment', done: a.paymentStatus === 'paid' },
+    { label: 'Verification', done: a.verificationStatus === 'passed' },
+    { label: 'Admin Review', done: a.adminReviewStatus === 'approved' },
+    { label: 'Agreement', done: a.agreementStatus === 'accepted' },
+    { label: 'Activation', done: a.activationStatus === 'active' }
+  ];
+  document.getElementById('d-timeline').innerHTML = steps.map(function(s, i){
+    var isActive = !s.done && (i === 0 || steps[i-1].done);
+    var dotCls = s.done ? 'done' : (isActive ? 'active' : '');
+    var dotContent = s.done ? '✓' : (i+1);
+    return '<li><span class="dot ' + dotCls + '">' + dotContent + '</span>' + s.label + '</li>';
+  }).join('');
+
+  document.getElementById('d-actionRequired').style.display = a.status === 'action_required' && a.infoRequested ? 'block' : 'none';
+  document.getElementById('d-actionMsg').textContent = a.infoRequested || '';
+
+  document.getElementById('d-underReview').style.display = (a.status === 'under_review' || a.adminReviewStatus === 'pending') ? 'block' : 'none';
+
+  document.getElementById('d-continueBtnWrap').style.display = (a.status === 'draft' || a.status === 'payment_pending') ? 'block' : 'none';
+
+  document.getElementById('d-events').innerHTML = d.events.map(function(e){
+    var when = new Date(e.created_at).toLocaleString('en-IN', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+    return '<li><span class="dot done">•</span><span><strong style="text-transform:capitalize">' + e.actor + ':</strong> ' + e.event + '<br><span style="color:var(--gray);font-size:12px">' + when + '</span></span></li>';
+  }).join('') || '<li style="color:var(--gray)">No activity yet</li>';
+}
+
+// Same-browser return: if we already have a stored session, skip straight to the dashboard.
+(function(){
+  var code = localStorage.getItem('ws4y_app_code');
+  var token = localStorage.getItem('ws4y_app_token');
+  if(code && token) loadDashboard(code, token);
+})();
+</script>
+</body>
+</html>

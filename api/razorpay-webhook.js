@@ -2,11 +2,18 @@
 // Workspace4You — Razorpay Webhook (server-to-server payment confirmation)
 // File: api/razorpay-webhook.js
 //
-// Reliability backstop for /api/verify-payment: that endpoint only
-// updates the sheet if the customer's browser stays alive long enough
-// to report success. This endpoint is called directly by Razorpay's
-// servers regardless of what happens client-side, so a payment that
-// succeeds but never gets reported by the browser still gets logged.
+// Reliability backstop for two independent flows, both called
+// directly by Razorpay's servers regardless of what happens
+// client-side:
+//  - The original booking flow (/api/verify-payment + /api/sheets):
+//    logs "Paid" to the Google Sheet if the browser never reported
+//    success.
+//  - The Virtual Address application flow (/api/applications/*):
+//    if the order's notes carry an application_code, marks that
+//    application's payment as verified in Postgres, same as
+//    /api/applications/verify-payment would have.
+// A payment.captured event is routed to whichever flow created the
+// order, by checking for notes.application_code.
 //
 // Setup (do this after deploying):
 //   1. Razorpay Dashboard -> Settings -> Webhooks -> Add New Webhook
@@ -19,8 +26,13 @@
 
 const crypto = require('crypto');
 const { logRow } = require('./_sheets');
+const { sql, getApplicationByCode, logEvent } = require('./_db');
+const { generateResumeToken } = require('./_appAuth');
+const { sendApplicationReceiptEmail } = require('./_notify');
 
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
+const SITE_URL = process.env.SITE_URL || 'https://workspace4you.co';
+const SUPPORT_PHONE = process.env.SUPPORT_PHONE_DISPLAY || '+91 77180 86678';
 
 function readRawBody(req){
   return new Promise(function(resolve, reject){
@@ -89,8 +101,44 @@ module.exports = async function handler(req, res){
   }
 
   var payment = event.payload && event.payload.payment && event.payload.payment.entity;
+  var applicationCode = payment && payment.notes && payment.notes.application_code;
 
-  if (event.event === 'payment.captured' && payment) {
+  if (applicationCode) {
+    // Virtual Address application flow — Postgres, not the Sheet.
+    try {
+      var app = await getApplicationByCode(applicationCode);
+      if (app && app.payment_status !== 'paid') {
+        if (event.event === 'payment.captured') {
+          await sql`
+            UPDATE applications SET
+              razorpay_payment_id = ${payment.id},
+              payment_status = 'paid',
+              payment_verified_at = now(),
+              status = 'verification_pending',
+              updated_at = now()
+            WHERE id = ${app.id}
+          `;
+          await logEvent(app.id, 'system', 'Payment verified via webhook — ₹' + Math.round((payment.amount || 0) / 100) + ' (Razorpay ' + payment.id + ')');
+          await logEvent(app.id, 'system', 'Status → Verification Pending');
+
+          if (app.email) {
+            var resumeToken = generateResumeToken(app.application_code);
+            var resumeUrl = resumeToken ? (SITE_URL + '/apply.html?resume=' + resumeToken) : (SITE_URL + '/track.html');
+            await sendApplicationReceiptEmail(
+              { application_code: app.application_code, payment_amount: Math.round((payment.amount || 0) / 100), email: app.email },
+              resumeUrl,
+              SUPPORT_PHONE
+            );
+          }
+        } else if (event.event === 'payment.failed') {
+          await sql`UPDATE applications SET payment_status = 'failed', updated_at = now() WHERE id = ${app.id}`;
+          await logEvent(app.id, 'system', 'Payment failed (webhook)');
+        }
+      }
+    } catch (err) {
+      console.error('Webhook applications-flow update failed:', err);
+    }
+  } else if (event.event === 'payment.captured' && payment) {
     await logRow(paymentToRow(payment, 'Paid'));
   } else if (event.event === 'payment.failed' && payment) {
     await logRow(paymentToRow(payment, 'Payment Failed (Webhook)'));

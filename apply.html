@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apply for Virtual Address | WorkSpace4You</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ws4y-shared.css">
+</head>
+<body>
+
+<nav class="ws4y-nav">
+  <a href="index.html" class="ws4y-logo"><img src="logo.png" alt="WorkSpace4You logo">WorkSpace<span>4You</span></a>
+  <a href="track.html" class="ws4y-nav-link">Track Application →</a>
+</nav>
+
+<div class="wrap">
+  <div class="progress-track" id="progressTrack"></div>
+
+  <!-- STEP 1: SELECT PLAN -->
+  <div class="step active" id="step1">
+    <div class="card">
+      <h2>Virtual Address</h2>
+      <p class="sub">Choose your plan to start your application.</p>
+      <div class="radio-cards">
+        <div class="radio-card selected" data-duration="month" onclick="selectDuration('month')">
+          <div>Monthly</div>
+          <div id="p-month" style="font-size:16px;margin-top:4px">₹1,799/mo</div>
+        </div>
+        <div class="radio-card" data-duration="annual" onclick="selectDuration('annual')">
+          <div>12 Months</div>
+          <div id="p-annual" style="font-size:16px;margin-top:4px">₹1,499/mo</div>
+        </div>
+      </div>
+      <div class="info-box">Deposit (1 month, refundable) + advance (1 month) + GST 18% is payable at booking. The exact total is shown before you pay.</div>
+      <button class="btn-primary" onclick="startApplication()" id="step1Btn">Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: PERSONAL INFORMATION -->
+  <div class="step" id="step2">
+    <div class="card">
+      <h2>Your Details</h2>
+      <p class="sub">Let's get your application started.</p>
+      <div class="form-group"><label>Full Name *</label><input type="text" id="p-name" placeholder="Your full name"></div>
+      <div class="form-group">
+        <label>Mobile Number *</label>
+        <div style="display:flex;gap:8px">
+          <input type="tel" id="p-mobile" placeholder="10-digit mobile number" style="flex:1">
+          <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="sendOtpBtn" onclick="sendOtp()">Send OTP</button>
+        </div>
+      </div>
+      <div class="form-group" id="otpGroup" style="display:none">
+        <label>Enter OTP</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="p-otp" placeholder="6-digit OTP" style="flex:1" inputmode="numeric">
+          <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="verifyOtpBtn" onclick="verifyOtp()">Verify</button>
+        </div>
+      </div>
+      <div id="mobileVerifiedNote" style="display:none;color:var(--green);font-weight:700;font-size:13px;margin:-8px 0 14px">✓ Mobile number verified</div>
+      <div class="form-group"><label>Email Address *</label><input type="email" id="p-email" placeholder="your@email.com"></div>
+      <div class="error-msg" id="step2Err"></div>
+      <button class="btn-primary" onclick="submitPersonal()" id="step2Btn">Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: ABOUT YOUR BUSINESS -->
+  <div class="step" id="step3">
+    <div class="card">
+      <h2>About Your Business</h2>
+      <p class="sub">What type of business do you have?</p>
+      <div class="select-cards" id="bizTypeCards">
+        <div class="radio-card" data-type="Proprietorship" onclick="selectBizType('Proprietorship')">Proprietorship</div>
+        <div class="radio-card" data-type="Private Limited Company" onclick="selectBizType('Private Limited Company')">Private Limited Company</div>
+        <div class="radio-card" data-type="LLP" onclick="selectBizType('LLP')">LLP</div>
+        <div class="radio-card" data-type="Partnership" onclick="selectBizType('Partnership')">Partnership</div>
+        <div class="radio-card" data-type="Other" onclick="selectBizType('Other')">Other</div>
+      </div>
+
+      <div id="bizFields" style="display:none;margin-top:18px">
+        <div class="form-group" data-f="business_name"><label>Business Name *</label><input type="text" id="b-name"></div>
+        <div class="form-group" data-f="business_activity"><label>Business Activity *</label><input type="text" id="b-activity" placeholder="e.g. E-commerce, Consulting, Trading"></div>
+        <div class="form-group" data-f="pan"><label>PAN *</label><input type="text" id="b-pan" placeholder="ABCDE1234F" style="text-transform:uppercase"></div>
+        <div class="form-group" data-f="cin"><label>CIN *</label><input type="text" id="b-cin" style="text-transform:uppercase"></div>
+        <div class="form-group" data-f="llpin"><label>LLPIN *</label><input type="text" id="b-llpin" style="text-transform:uppercase"></div>
+        <div class="form-group" data-f="gstin"><label>GSTIN <span class="hint">(or Udyam below)</span></label><input type="text" id="b-gstin" style="text-transform:uppercase"></div>
+        <div class="form-group" data-f="udyam"><label>Udyam Registration Number</label><input type="text" id="b-udyam" style="text-transform:uppercase"></div>
+        <label class="check-row" data-f="no_gst_udyam" style="display:none"><input type="checkbox" id="b-nogst"> I don't have GST/Udyam yet — flag my application for manual verification</label>
+      </div>
+      <div class="error-msg" id="step3Err"></div>
+      <button class="btn-primary" onclick="submitBusiness()" id="step3Btn">Continue →</button>
+      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: ADDRESS USAGE -->
+  <div class="step" id="step4">
+    <div class="card">
+      <h2>How will you use your Virtual Address?</h2>
+      <p class="sub">Select all that apply.</p>
+      <label class="check-row"><input type="checkbox" class="au-check" value="GST Registration"> GST Registration</label>
+      <label class="check-row"><input type="checkbox" class="au-check" value="Company / LLP Registration"> Company / LLP Registration</label>
+      <label class="check-row"><input type="checkbox" class="au-check" value="Business Correspondence"> Business Correspondence</label>
+      <label class="check-row"><input type="checkbox" class="au-check" value="Website & Invoices"> Website &amp; Invoices</label>
+      <label class="check-row"><input type="checkbox" class="au-check" value="Receiving Letters & Documents"> Receiving Letters &amp; Documents</label>
+
+      <div style="margin-top:20px">
+        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:10px">Will you receive commercial goods or inventory at this address?</label>
+        <div class="radio-cards">
+          <div class="radio-card" data-inv="no" onclick="selectInventory(false)">No</div>
+          <div class="radio-card" data-inv="yes" onclick="selectInventory(true)">Yes</div>
+        </div>
+      </div>
+      <div class="warn-box">Commercial inventory storage or receiving is not included in the standard Virtual Address plan. If you select "Yes," our team will review your requirement separately before approval.</div>
+
+      <button class="btn-primary" onclick="submitAddress()" id="step4Btn">Continue →</button>
+      <button class="btn-secondary" onclick="goStep(3)">← Back</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: PAYMENT -->
+  <div class="step" id="step5">
+    <div class="card">
+      <h2>Payment Summary</h2>
+      <p class="sub">Virtual Address · <span id="paySummaryDuration">Monthly</span></p>
+      <div id="payRows"></div>
+      <div class="price-row price-total"><span>Total Payable Now</span><span id="payTotal">—</span></div>
+      <div class="info-box">Payment confirms your application. Your Virtual Address will be activated only after successful verification and approval.</div>
+      <button class="btn-primary" onclick="proceedToPayment()" id="payBtn">Proceed to Secure Payment →</button>
+      <button class="btn-secondary" onclick="goStep(4)">← Back</button>
+    </div>
+  </div>
+
+  <!-- STEP 6: PAYMENT SUCCESS -->
+  <div class="step" id="step6">
+    <div class="card" style="text-align:center">
+      <div style="font-size:52px;margin-bottom:6px">✓</div>
+      <h2 style="color:var(--green)">Payment Successful</h2>
+      <p class="sub">Your application has been received.</p>
+      <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:14px;padding:20px;text-align:left;margin-bottom:20px">
+        <div class="price-row"><span>Application ID</span><strong id="s-code">—</strong></div>
+        <div class="price-row"><span>Payment ID</span><strong id="s-payid" style="font-size:12px">—</strong></div>
+        <div class="price-row"><span>Amount Paid</span><strong id="s-amount">—</strong></div>
+        <div class="price-row"><span>Status</span><span class="status-badge status-yellow">Verification Pending</span></div>
+      </div>
+      <p style="font-size:14px;color:var(--dark);line-height:1.7;margin-bottom:6px">Your payment has been received. Our team will verify your application before activating your Virtual Address.</p>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:20px">Our team will review your application within 24 hours. A receipt and continue-application link have been sent to your email.</p>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:16px">Need faster processing? Call <a id="s-phone" href="tel:+917718086678" style="color:var(--blue);font-weight:700">+91 77180 86678</a></p>
+      <a href="track.html" class="btn-primary" style="display:block;text-decoration:none;line-height:1.4;box-sizing:border-box">Track Application Status →</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+var STEPS = ['Plan','Details','Business','Address','Payment','Done'];
+var appCode = localStorage.getItem('ws4y_app_code') || '';
+var accessToken = localStorage.getItem('ws4y_app_token') || '';
+var duration = 'month';
+var bizType = '';
+var inventoryRequested = null;
+var supportPhone = '+91 77180 86678';
+var supportPhoneTel = '+917718086678';
+
+function renderProgress(activeIdx){
+  var el = document.getElementById('progressTrack');
+  el.innerHTML = STEPS.map(function(label, i){
+    var cls = i < activeIdx ? 'done' : (i === activeIdx ? 'active' : '');
+    return '<div class="progress-step ' + cls + '">' + (i+1) + '. ' + label + '</div>';
+  }).join('');
+}
+
+function goStep(n){
+  document.querySelectorAll('.step').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('step'+n).classList.add('active');
+  renderProgress(n-1);
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+
+function authHeaders(){
+  return {'Content-Type':'application/json', 'Authorization':'Bearer '+accessToken};
+}
+
+// ---- Load live prices + contact for display ----
+fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
+  var p = cfg.prices || {};
+  var c = cfg.contact || {};
+  if(p.virtualAddressMonthly) document.getElementById('p-month').textContent = '₹'+parseInt(p.virtualAddressMonthly).toLocaleString('en-IN')+'/mo';
+  if(p.virtualAddressAnnual) document.getElementById('p-annual').textContent = '₹'+parseInt(p.virtualAddressAnnual).toLocaleString('en-IN')+'/mo';
+  if(c.phone){ supportPhone = c.phone; supportPhoneTel = 'tel:'+c.phone.replace(/\s/g,''); document.getElementById('s-phone').textContent = c.phone; document.getElementById('s-phone').href = supportPhoneTel; }
+}).catch(function(){});
+
+// ---- STEP 1 ----
+function selectDuration(d){
+  duration = d;
+  document.querySelectorAll('.radio-card[data-duration]').forEach(function(el){
+    el.classList.toggle('selected', el.dataset.duration === d);
+  });
+}
+
+function startApplication(){
+  var btn = document.getElementById('step1Btn');
+  if(appCode && accessToken){ goStep(2); return; } // already have a draft
+  btn.textContent = 'Starting...'; btn.disabled = true;
+  fetch('/api/applications/create', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({duration:duration})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not start application');
+      appCode = d.code; accessToken = d.accessToken;
+      localStorage.setItem('ws4y_app_code', appCode);
+      localStorage.setItem('ws4y_app_token', accessToken);
+      goStep(2);
+    })
+    .catch(function(err){ showToast(err.message); })
+    .finally(function(){ btn.textContent = 'Continue →'; btn.disabled = false; });
+}
+
+// ---- STEP 2: PERSONAL + OTP ----
+var mobileVerified = false;
+function sendOtp(){
+  var mobile = document.getElementById('p-mobile').value.trim();
+  if(mobile.replace(/\D/g,'').length < 10){ showToast('Enter a valid 10-digit mobile number'); return; }
+  var btn = document.getElementById('sendOtpBtn');
+  btn.textContent = 'Sending...'; btn.disabled = true;
+  fetch('/api/applications/otp-request', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, mobile:mobile, purpose:'signup'})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not send OTP');
+      document.getElementById('otpGroup').style.display = 'block';
+      showToast('OTP sent to your mobile');
+    })
+    .catch(function(err){ showToast(err.message); })
+    .finally(function(){ btn.textContent = 'Resend OTP'; btn.disabled = false; });
+}
+function verifyOtp(){
+  var mobile = document.getElementById('p-mobile').value.trim();
+  var otp = document.getElementById('p-otp').value.trim();
+  if(!otp){ showToast('Enter the OTP'); return; }
+  var btn = document.getElementById('verifyOtpBtn');
+  btn.textContent = 'Verifying...'; btn.disabled = true;
+  fetch('/api/applications/otp-verify', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, mobile:mobile, otp:otp, purpose:'signup'})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Incorrect OTP');
+      mobileVerified = true;
+      document.getElementById('mobileVerifiedNote').style.display = 'block';
+      document.getElementById('otpGroup').style.display = 'none';
+      showToast('Mobile verified ✓');
+    })
+    .catch(function(err){ showToast(err.message); })
+    .finally(function(){ btn.textContent = 'Verify'; btn.disabled = false; });
+}
+function submitPersonal(){
+  var err = document.getElementById('step2Err'); err.style.display='none';
+  var name = document.getElementById('p-name').value.trim();
+  var email = document.getElementById('p-email').value.trim();
+  if(!name){ err.textContent='Please enter your full name'; err.style.display='block'; return; }
+  if(!mobileVerified){ err.textContent='Please verify your mobile number'; err.style.display='block'; return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent='Please enter a valid email address'; err.style.display='block'; return; }
+  var btn = document.getElementById('step2Btn');
+  btn.textContent='Saving...'; btn.disabled=true;
+  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'personal', data:{fullName:name, email:email}})})
+    .then(function(r){return r.json();})
+    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(3); })
+    .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
+    .finally(function(){ btn.textContent='Continue →'; btn.disabled=false; });
+}
+
+// ---- STEP 3: BUSINESS ----
+var BIZ_FIELD_MAP = {
+  'Proprietorship':          ['business_name','business_activity','pan','gstin','udyam','no_gst_udyam'],
+  'Private Limited Company': ['business_name','pan','cin','gstin'],
+  'LLP':                     ['business_name','pan','llpin','gstin'],
+  'Partnership':             ['business_name','business_activity','pan','gstin','udyam'],
+  'Other':                   ['business_name','business_activity','pan','gstin','udyam']
+};
+function selectBizType(t){
+  bizType = t;
+  document.querySelectorAll('#bizTypeCards .radio-card').forEach(function(el){
+    el.classList.toggle('selected', el.dataset.type === t);
+  });
+  var show = BIZ_FIELD_MAP[t] || [];
+  document.querySelectorAll('#bizFields [data-f]').forEach(function(el){
+    el.style.display = show.indexOf(el.dataset.f) !== -1 ? '' : 'none';
+  });
+  document.getElementById('bizFields').style.display = 'block';
+}
+function submitBusiness(){
+  var err = document.getElementById('step3Err'); err.style.display='none';
+  if(!bizType){ err.textContent='Please select a business type'; err.style.display='block'; return; }
+  var name = document.getElementById('b-name').value.trim();
+  if(!name){ err.textContent='Please enter your business name'; err.style.display='block'; return; }
+  var pan = document.getElementById('b-pan').value.trim();
+  if(!pan){ err.textContent='Please enter your PAN'; err.style.display='block'; return; }
+
+  var data = {
+    businessType: bizType,
+    businessName: name,
+    businessActivity: document.getElementById('b-activity').value.trim(),
+    pan: pan,
+    gstin: document.getElementById('b-gstin').value.trim(),
+    udyamNumber: document.getElementById('b-udyam').value.trim(),
+    cin: document.getElementById('b-cin').value.trim(),
+    llpin: document.getElementById('b-llpin').value.trim(),
+    noGstUdyam: document.getElementById('b-nogst').checked
+  };
+  var btn = document.getElementById('step3Btn');
+  btn.textContent='Saving...'; btn.disabled=true;
+  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'business', data:data})})
+    .then(function(r){return r.json();})
+    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(4); })
+    .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
+    .finally(function(){ btn.textContent='Continue →'; btn.disabled=false; });
+}
+
+// ---- STEP 4: ADDRESS USAGE ----
+function selectInventory(yes){
+  inventoryRequested = yes;
+  document.querySelectorAll('.radio-card[data-inv]').forEach(function(el){
+    el.classList.toggle('selected', (el.dataset.inv === 'yes') === yes);
+  });
+}
+function submitAddress(){
+  var uses = Array.prototype.map.call(document.querySelectorAll('.au-check:checked'), function(el){ return el.value; });
+  var btn = document.getElementById('step4Btn');
+  btn.textContent='Saving...'; btn.disabled=true;
+  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'address', data:{addressUsage:uses, inventoryRequested: !!inventoryRequested}})})
+    .then(function(r){return r.json();})
+    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); renderPaymentSummary(); goStep(5); })
+    .catch(function(e){ showToast(e.message); })
+    .finally(function(){ btn.textContent='Continue →'; btn.disabled=false; });
+}
+
+// ---- STEP 5: PAYMENT ----
+function renderPaymentSummary(){
+  document.getElementById('paySummaryDuration').textContent = duration === 'annual' ? '12-Month Plan' : 'Month-to-month';
+  document.getElementById('payRows').innerHTML = '<div class="price-row"><span>Deposit + advance + GST 18%</span><span>Calculated at checkout</span></div>';
+  document.getElementById('payTotal').textContent = 'See next step';
+}
+function proceedToPayment(){
+  var btn = document.getElementById('payBtn');
+  btn.textContent='Opening payment...'; btn.disabled=true;
+  fetch('/api/applications/pay', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode})})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.success) throw new Error(data.error||'Could not start payment');
+      document.getElementById('payTotal').textContent = '₹'+data.amount.toLocaleString('en-IN');
+      var options = {
+        key: data.keyId,
+        amount: data.amountPaise,
+        currency: 'INR',
+        name: 'WorkSpace4You',
+        description: 'Virtual Address — Application ' + appCode,
+        order_id: data.orderId,
+        theme: {color:'#0B3A8D'},
+        handler: function(response){
+          fetch('/api/applications/verify-payment', {method:'POST', headers:authHeaders(), body:JSON.stringify({
+            code: appCode,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+          })})
+          .then(function(r){return r.json();})
+          .then(function(v){
+            if(!v.success) throw new Error(v.error||'Payment verification failed');
+            document.getElementById('s-code').textContent = v.applicationCode;
+            document.getElementById('s-payid').textContent = v.paymentId;
+            document.getElementById('s-amount').textContent = '₹'+parseInt(v.amount).toLocaleString('en-IN');
+            goStep(6);
+          })
+          .catch(function(err){ showToast('Payment verification failed: '+err.message+'. Please contact us before retrying.'); });
+        },
+        modal: { ondismiss: function(){ showToast('Payment cancelled — you can try again anytime.'); } }
+      };
+      var rzp = new Razorpay(options);
+      rzp.open();
+    })
+    .catch(function(err){ showToast(err.message); })
+    .finally(function(){ btn.textContent='Proceed to Secure Payment →'; btn.disabled=false; });
+}
+
+// ---- RESUME (magic link or same-browser return) ----
+(function init(){
+  var params = new URLSearchParams(window.location.search);
+  var resumeToken = params.get('resume');
+
+  function resumeAt(track){
+    var a = track.application;
+    if(a.duration) { duration = a.duration; selectDuration(duration); }
+    if(a.paymentStatus === 'paid'){
+      document.getElementById('s-code').textContent = a.code;
+      document.getElementById('s-payid').textContent = a.razorpayPaymentId || '—';
+      document.getElementById('s-amount').textContent = a.paymentAmount ? ('₹'+parseInt(a.paymentAmount).toLocaleString('en-IN')) : '—';
+      goStep(6);
+    } else if(a.businessType && a.addressUsage && a.addressUsage.length){
+      renderPaymentSummary(); goStep(5);
+    } else if(a.businessType){
+      selectBizType(a.businessType); goStep(4);
+    } else if(a.mobileVerified && a.fullName){
+      goStep(3);
+    } else {
+      if(a.fullName) document.getElementById('p-name').value = a.fullName;
+      if(a.email) document.getElementById('p-email').value = a.email;
+      if(a.mobile) document.getElementById('p-mobile').value = a.mobile.replace(/^91/, '');
+      if(a.mobileVerified){ mobileVerified = true; document.getElementById('mobileVerifiedNote').style.display = 'block'; }
+      goStep(2);
+    }
+  }
+
+  function loadTrack(){
+    fetch('/api/applications/track?code='+encodeURIComponent(appCode), {headers:authHeaders()})
+      .then(function(r){return r.json();})
+      .then(function(d){ if(d.success) resumeAt(d); })
+      .catch(function(){});
+  }
+
+  if(resumeToken){
+    fetch('/api/applications/resume?token='+encodeURIComponent(resumeToken))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!d.success) { showToast(d.error||'This link is no longer valid'); return; }
+        appCode = d.code; accessToken = d.accessToken;
+        localStorage.setItem('ws4y_app_code', appCode);
+        localStorage.setItem('ws4y_app_token', accessToken);
+        loadTrack();
+      })
+      .catch(function(){});
+  } else if(appCode && accessToken){
+    loadTrack();
+  } else {
+    goStep(1);
+  }
+})();
+</script>
+</body>
+</html>
