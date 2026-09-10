@@ -1,5 +1,5 @@
 // ============================================================
-// Workspace4You — Notifications (email via Resend, SMS stub)
+// Workspace4you — Notifications (email via Resend, SMS stub)
 // Env vars: RESEND_API_KEY, RESEND_FROM_EMAIL (optional — the
 // "from" address must be at a domain verified in Resend)
 //
@@ -12,7 +12,7 @@
 // ============================================================
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Workspace4You <applications@workspace4you.co>';
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Workspace4you <applications@workspace4you.co>';
 
 const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY;
 const MSG91_SMS_TEMPLATE_ID = process.env.MSG91_SMS_TEMPLATE_ID;
@@ -66,19 +66,19 @@ function escapeHtml(s) {
 async function sendOtpEmail(email, otp) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#101828">
-      <h2 style="color:#0B3A8D">Workspace4You</h2>
+      <h2 style="color:#0B3A8D">Workspace4you</h2>
       <p>Your verification code is:</p>
       <p style="font-size:32px;font-weight:800;letter-spacing:6px;color:#0B3A8D">${escapeHtml(otp)}</p>
       <p style="color:#6B7280;font-size:13px">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
     </div>
   `;
-  return sendEmail(email, `${otp} is your Workspace4You verification code`, html);
+  return sendEmail(email, `${otp} is your Workspace4you verification code`, html);
 }
 
 async function sendApplicationReceiptEmail(app, resumeUrl, phoneDisplay) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">
-      <h2 style="color:#0B3A8D">Workspace4You</h2>
+      <h2 style="color:#0B3A8D">Workspace4you</h2>
       <p>Your payment has been received successfully.</p>
       <p><strong>Application ID:</strong> ${escapeHtml(app.application_code)}<br>
       <strong>Amount Paid:</strong> ₹${Number(app.payment_amount || 0).toLocaleString('en-IN')}</p>
@@ -88,13 +88,13 @@ async function sendApplicationReceiptEmail(app, resumeUrl, phoneDisplay) {
       <p>Need faster processing? Call <a href="tel:${escapeHtml(phoneDisplay)}">${escapeHtml(phoneDisplay)}</a></p>
     </div>
   `;
-  return sendEmail(app.email, `Workspace4You — Application ${app.application_code} received`, html);
+  return sendEmail(app.email, `Workspace4you — Application ${app.application_code} received`, html);
 }
 
 async function sendExpiryReminderEmail(app, daysLeft, contactPhone, contactEmail) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">
-      <h2 style="color:#0B3A8D">Workspace4You</h2>
+      <h2 style="color:#0B3A8D">Workspace4you</h2>
       <p>Your Virtual Address is renewing soon.</p>
       <p><strong>Application ID:</strong> ${escapeHtml(app.application_code)}<br>
       <strong>Business:</strong> ${escapeHtml(app.business_name || '')}<br>
@@ -103,13 +103,13 @@ async function sendExpiryReminderEmail(app, daysLeft, contactPhone, contactEmail
       <p>Call <a href="tel:${escapeHtml(contactPhone)}">${escapeHtml(contactPhone)}</a> or email <a href="mailto:${escapeHtml(contactEmail)}">${escapeHtml(contactEmail)}</a>.</p>
     </div>
   `;
-  return sendEmail(app.email, `Workspace4You — Your Virtual Address renews in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`, html);
+  return sendEmail(app.email, `Workspace4you — Your Virtual Address renews in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`, html);
 }
 
 async function sendExpiredEmail(app, contactPhone, contactEmail) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">
-      <h2 style="color:#0B3A8D">Workspace4You</h2>
+      <h2 style="color:#0B3A8D">Workspace4you</h2>
       <p>Your Virtual Address has expired.</p>
       <p><strong>Application ID:</strong> ${escapeHtml(app.application_code)}<br>
       <strong>Business:</strong> ${escapeHtml(app.business_name || '')}<br>
@@ -118,7 +118,7 @@ async function sendExpiredEmail(app, contactPhone, contactEmail) {
       <p>Call <a href="tel:${escapeHtml(contactPhone)}">${escapeHtml(contactPhone)}</a> or email <a href="mailto:${escapeHtml(contactEmail)}">${escapeHtml(contactEmail)}</a>.</p>
     </div>
   `;
-  return sendEmail(app.email, `Workspace4You — Your Virtual Address (${app.application_code}) has expired`, html);
+  return sendEmail(app.email, `Workspace4you — Your Virtual Address (${app.application_code}) has expired`, html);
 }
 
 module.exports = { sendEmail, sendSms, sendOtpEmail, sendApplicationReceiptEmail, sendExpiryReminderEmail, sendExpiredEmail };

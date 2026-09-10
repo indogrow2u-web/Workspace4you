@@ -1,5 +1,5 @@
 // ============================================================
-// Workspace4You — Admin: generate the agreement (Step 13)
+// Workspace4you — Admin: generate the agreement (Step 13)
 // File: api/applications/admin-generate-agreement.js
 //
 // CRITICAL RULES enforced here:
@@ -68,9 +68,9 @@ module.exports = async function handler(req, res) {
       const resumeUrl = resumeToken ? `${SITE_URL}/agreement.html?resume=${resumeToken}` : `${SITE_URL}/track.html`;
       await sendEmail(
         app.email,
-        'Workspace4You — Your agreement is ready (' + app.application_code + ')',
+        'Workspace4you — Your agreement is ready (' + app.application_code + ')',
         '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">' +
-        '<h2 style="color:#0B3A8D">Workspace4You</h2>' +
+        '<h2 style="color:#0B3A8D">Workspace4you</h2>' +
         '<p>Good news — your Virtual Office Agreement is ready to review.</p>' +
         '<p><strong>Application ID:</strong> ' + app.application_code + '<br><strong>Agreement Version:</strong> ' + template.version + '</p>' +
         '<p><a href="' + resumeUrl + '" style="display:inline-block;background:#0B3A8D;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">View Agreement</a></p>' +

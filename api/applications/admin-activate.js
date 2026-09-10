@@ -1,5 +1,5 @@
 // ============================================================
-// Workspace4You — Admin: activate the Virtual Address (Step 14)
+// Workspace4you — Admin: activate the Virtual Address (Step 14)
 // File: api/applications/admin-activate.js
 // Hard gate: only callable once the customer has actually accepted
 // the agreement — payment or admin approval alone are not enough.
@@ -43,7 +43,7 @@ module.exports = async function handler(req, res) {
     if (app.email) {
       await sendEmail(
         app.email,
-        'Workspace4You — Your Virtual Address is now active! (' + app.application_code + ')',
+        'Workspace4you — Your Virtual Address is now active! (' + app.application_code + ')',
         '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">' +
         '<h2 style="color:#059669">Your Virtual Address is now active ✓</h2>' +
         '<p><strong>Business:</strong> ' + (app.business_name || '') + '<br>' +

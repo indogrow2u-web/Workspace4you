@@ -1,5 +1,5 @@
 // ============================================================
-// Workspace4You — Admin: reject an application
+// Workspace4you — Admin: reject an application
 // File: api/applications/admin-reject.js
 // ============================================================
 
@@ -34,9 +34,9 @@ module.exports = async function handler(req, res) {
     if (app.email) {
       await sendEmail(
         app.email,
-        'Workspace4You — Update on your application ' + app.application_code,
+        'Workspace4you — Update on your application ' + app.application_code,
         '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">' +
-        '<h2 style="color:#0B3A8D">Workspace4You</h2>' +
+        '<h2 style="color:#0B3A8D">Workspace4you</h2>' +
         '<p>We\'re sorry — we were unable to approve your Virtual Address application ' + app.application_code + '.</p>' +
         (reason ? '<p><strong>Reason:</strong> ' + reason + '</p>' : '') +
         (app.payment_status === 'paid' ? '<p>Your payment will be refunded to your original payment method.</p>' : '') +

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Dashboard | WorkSpace4You</title>
+<title>Admin Dashboard | Workspace4you</title>
 <link rel="icon" type="image/png" href="logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -99,7 +99,7 @@ tr:hover td{background:#FAFBFF}
 
 <div id="loginScreen">
   <div class="login-card">
-    <div class="login-logo">WorkSpace<span>4You</span></div>
+    <div class="login-logo">Workspace<span>4you</span></div>
     <div class="login-sub">Admin Dashboard · Secure Access</div>
     <input type="password" id="passInput" placeholder="Enter admin password">
     <button class="login-btn" onclick="doLogin()">Login</button>
@@ -109,7 +109,7 @@ tr:hover td{background:#FAFBFF}
 
 <div id="dashboard" style="display:none">
 <header>
-  <div class="h-logo">WorkSpace<span>4You</span> <span style="font-size:13px;font-weight:400;opacity:.6">Admin</span></div>
+  <div class="h-logo">Workspace<span>4you</span> <span style="font-size:13px;font-weight:400;opacity:.6">Admin</span></div>
   <div class="h-right">
     <div class="h-badge" id="lastRefresh">Loading...</div>
     <button class="logout-btn" onclick="doLogout()">Logout</button>
@@ -537,7 +537,7 @@ function renderTable(){
   tbody.innerHTML = filtered.map(function(l,i){
     var sc = l.status==='Paid'?'status-paid':l.status==='Dropped at Payment'?'status-dropped':'status-filled';
     var phone10 = (l.phone||'').replace(/\D/g,'').slice(-10);
-    var waLink = phone10 ? 'https://wa.me/91'+phone10+'?text=Hi+'+encodeURIComponent(l.name||'')+',+this+is+WorkSpace4You.+We+noticed+your+enquiry+for+'+encodeURIComponent(l.plan||'')+'.+Can+we+help+complete+your+booking?' : '#';
+    var waLink = phone10 ? 'https://wa.me/91'+phone10+'?text=Hi+'+encodeURIComponent(l.name||'')+',+this+is+Workspace4you.+We+noticed+your+enquiry+for+'+encodeURIComponent(l.plan||'')+'.+Can+we+help+complete+your+booking?' : '#';
     return '<tr>'+
       '<td style="color:var(--gray);font-size:12px">'+(i+1)+'</td>'+
       '<td style="font-size:12px;white-space:nowrap;color:var(--gray)">'+esc(l.timestamp||'—')+'</td>'+

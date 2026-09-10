@@ -1,5 +1,5 @@
 // ============================================================
-// Workspace4You — Admin: request more information from the customer
+// Workspace4you — Admin: request more information from the customer
 // File: api/applications/admin-request-info.js
 // Sends the application back to the customer without ever making
 // them restart — it just flips to "action_required" with a message,
@@ -44,9 +44,9 @@ module.exports = async function handler(req, res) {
       const resumeUrl = resumeToken ? `${SITE_URL}/track.html?resume=${resumeToken}` : `${SITE_URL}/track.html`;
       await sendEmail(
         app.email,
-        'Workspace4You — Action needed on application ' + app.application_code,
+        'Workspace4you — Action needed on application ' + app.application_code,
         '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">' +
-        '<h2 style="color:#0B3A8D">Workspace4You</h2>' +
+        '<h2 style="color:#0B3A8D">Workspace4you</h2>' +
         '<p>We need a bit more information to continue reviewing your application <strong>' + app.application_code + '</strong>:</p>' +
         '<p style="background:#FFFBEB;border-left:3px solid #F4B400;padding:12px 16px;border-radius:8px">' + message + '</p>' +
         '<p><a href="' + resumeUrl + '" style="display:inline-block;background:#0B3A8D;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Continue Application</a></p>' +
