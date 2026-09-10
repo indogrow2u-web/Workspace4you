@@ -55,8 +55,16 @@ module.exports = async function handler(req, res) {
       INSERT INTO otp_challenges (application_id, purpose, channel, email, otp_hash, expires_at)
       VALUES (${app.id}, ${purpose}, 'email', ${normalized}, ${hashOtp(otp)}, now() + interval '10 minutes')
     `;
-    await sendOtpEmail(normalized, otp);
-    await logEvent(app.id, 'system', 'Verification code sent for ' + purpose);
+    const emailResult = await sendOtpEmail(normalized, otp);
+    await logEvent(app.id, 'system', 'Verification code ' + (emailResult.sent ? 'sent' : 'FAILED to send') + ' for ' + purpose);
+
+    if (!emailResult.sent && purpose === 'signup') {
+      // Safe to surface this for "signup" — the caller already proved
+      // ownership of the application via its access token, so there's no
+      // enumeration risk in admitting the send failed. "track" purpose
+      // keeps the generic response above regardless, on purpose.
+      return res.status(500).json({ error: 'Could not send the verification email right now. Please try again in a moment.' });
+    }
 
     return res.status(200).json({ success: true });
   } catch (err) {

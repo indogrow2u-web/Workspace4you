@@ -7,7 +7,7 @@
 
 const { sql, logEvent } = require('../_db');
 const { requireAdminApplication } = require('../_adminAppLoad');
-const { addMonths, formatDate } = require('../_agreement');
+const { addMonths, formatDate, escapeHtml } = require('../_agreement');
 const { sendEmail } = require('../_notify');
 const { setCorsHeaders } = require('../_cors');
 
@@ -46,7 +46,7 @@ module.exports = async function handler(req, res) {
         'Workspace4you — Your Virtual Address is now active! (' + app.application_code + ')',
         '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">' +
         '<h2 style="color:#059669">Your Virtual Address is now active ✓</h2>' +
-        '<p><strong>Business:</strong> ' + (app.business_name || '') + '<br>' +
+        '<p><strong>Business:</strong> ' + escapeHtml(app.business_name || '') + '<br>' +
         '<strong>Plan:</strong> ' + app.plan_name + ' (' + (app.duration === 'annual' ? '12 Months' : 'Monthly') + ')<br>' +
         '<strong>Valid until:</strong> ' + formatDate(end) + '</p>' +
         '<p>You can download your agreement anytime from Track Application.</p>' +
