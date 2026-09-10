@@ -77,6 +77,41 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif}
 .step{display:none}
 .step.active{display:block}
 
+/* TRUST BAR (apply.html) */
+.ws4y-trustbar{background:var(--dark);color:rgba(255,255,255,0.85);font-size:12px;font-weight:600;text-align:center;padding:9px 16px;letter-spacing:.2px}
+.ws4y-trustbar strong{color:var(--gold)}
+.ws4y-trustbar .sep{margin:0 8px;color:rgba(255,255,255,0.3)}
+
+/* APPLY LAYOUT — trust sidebar + wizard */
+.apply-shell{max-width:980px;margin:0 auto;padding:36px 20px 0;display:flex;gap:28px;align-items:flex-start}
+.apply-shell .wrap{flex:1;min-width:0;margin:0;padding:0 0 60px}
+.trust-sidebar{width:280px;flex-shrink:0;position:sticky;top:20px}
+.trust-card{background:#fff;border-radius:20px;box-shadow:0 4px 28px rgba(11,58,141,0.08);overflow:hidden;margin-bottom:16px}
+.trust-card img{width:100%;height:150px;object-fit:cover;display:block}
+.trust-card-body{padding:18px}
+.trust-card-body h4{font-size:13.5px;font-weight:800;color:var(--dark);margin-bottom:12px}
+.trust-row{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--gray);margin-bottom:11px;line-height:1.5}
+.trust-row:last-child{margin-bottom:0}
+.trust-row svg{flex-shrink:0;margin-top:2px;color:var(--blue)}
+.trust-row a{color:var(--blue);font-weight:700;text-decoration:none}
+.trust-mini{background:#fff;border-radius:16px;box-shadow:0 4px 28px rgba(11,58,141,0.08);padding:16px 18px;margin-bottom:12px}
+.trust-mini .stars{color:var(--gold);font-size:12px;margin-bottom:6px;letter-spacing:1px}
+.trust-mini p{font-size:12.5px;color:var(--dark);line-height:1.6;font-style:italic;margin-bottom:8px}
+.trust-mini .who{font-size:11.5px;color:var(--gray);font-weight:700}
+.trust-secure{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--gray);padding:14px 18px;background:#fff;border-radius:16px;box-shadow:0 4px 28px rgba(11,58,141,0.08)}
+
+@media(max-width:860px){
+  .apply-shell{flex-direction:column;padding:16px 20px 0;gap:0}
+  .trust-sidebar{width:100%;position:static;margin-bottom:4px}
+  .trust-sidebar .trust-card img,.trust-sidebar .trust-mini,.trust-sidebar .trust-secure{display:none}
+  .trust-sidebar .trust-card{margin-bottom:0}
+  .trust-sidebar .trust-card-body{padding:14px 18px}
+  .trust-sidebar .trust-row{margin-bottom:8px}
+}
+
+/* FOOTER (apply.html) */
+.ws4y-footer{text-align:center;font-size:11.5px;color:var(--gray);padding:18px 20px 28px;line-height:1.6}
+
 /* TIMELINE (Track Application) */
 .timeline{list-style:none}
 .timeline li{display:flex;align-items:flex-start;gap:12px;padding:10px 0;font-size:14px}
