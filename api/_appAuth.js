@@ -4,22 +4,25 @@
 // Two distinct credentials:
 //  - Access token: a random secret minted when an application is
 //    created (or when a customer re-authenticates via OTP or a
-//    resume link). Stored server-side only as a SHA-256 hash. The
-//    browser holds the raw token (localStorage) and sends it as
-//    Authorization: Bearer <token> on every write/read for that
-//    application. This is what lets the SAME browser keep working
-//    across reloads without re-verifying anything.
+//    resume link). Multiple can be valid at once, one per
+//    device/browser that has authenticated — stored in
+//    application_sessions (hashed), not compared against a single
+//    column, so opening a resume link on a second device no longer
+//    silently logs the first one out. The browser holds the raw
+//    token (localStorage) and sends it as Authorization: Bearer
+//    <token> on every write/read for that application.
 //  - Resume link token: a signed, expiring "magic link" token
-//    (HMAC'd with APP_SESSION_SECRET) embedded in the email/SMS
-//    sent after payment, so a customer can come back on ANY device
-//    without needing to remember an access token. Visiting it mints
-//    a fresh access token server-side.
+//    (HMAC'd with APP_SESSION_SECRET) embedded in the email sent
+//    after payment/approval/etc, so a customer can come back on ANY
+//    device without needing to remember an access token. Visiting it
+//    mints a fresh access token (a new session) server-side.
 //
 // Neither credential is derivable from the Application ID alone —
 // satisfies "Application ID alone must not expose customer info."
 // ============================================================
 
 const crypto = require('crypto');
+const { sql } = require('./_db');
 
 const SESSION_SECRET = process.env.APP_SESSION_SECRET;
 const RESUME_LINK_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -32,12 +35,28 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
 
-function verifyAccessToken(applicationRow, providedToken) {
+// Records a new valid session for this application/token pair. Existing
+// sessions (other devices) are left alone — this is additive, not a
+// replace, which is the whole point of the fix.
+async function createSession(applicationId, token) {
+  await sql`
+    INSERT INTO application_sessions (application_id, token_hash, expires_at)
+    VALUES (${applicationId}, ${hashToken(token)}, now() + interval '90 days')
+  `;
+}
+
+async function verifyAccessToken(applicationRow, providedToken) {
   if (!applicationRow || !providedToken) return false;
-  const expected = Buffer.from(applicationRow.access_token_hash || '');
-  const given = Buffer.from(hashToken(providedToken));
-  if (expected.length !== given.length || expected.length === 0) return false;
-  return crypto.timingSafeEqual(expected, given);
+  const hash = hashToken(providedToken);
+  const { rows } = await sql`
+    SELECT id FROM application_sessions
+    WHERE application_id = ${applicationRow.id} AND token_hash = ${hash} AND expires_at > now()
+    LIMIT 1
+  `;
+  if (!rows[0]) return false;
+  // Best-effort activity timestamp — never let this block a legitimate request.
+  sql`UPDATE application_sessions SET last_used_at = now() WHERE id = ${rows[0].id}`.catch(function () {});
+  return true;
 }
 
 function getBearerToken(req) {
@@ -81,6 +100,7 @@ function verifyResumeToken(token) {
 module.exports = {
   generateAccessToken,
   hashToken,
+  createSession,
   verifyAccessToken,
   getBearerToken,
   generateResumeToken,

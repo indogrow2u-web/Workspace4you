@@ -1,12 +1,17 @@
 // ============================================================
-// Workspace4You — Daily expiry check (Vercel Cron)
+// Workspace4You — Daily housekeeping check (Vercel Cron)
 // File: api/cron/check-expirations.js
-// Runs once a day (see vercel.json). Two jobs:
+// Runs once a day (see vercel.json). Three jobs:
 //  1. Applications expiring within 7 days get a one-time reminder
 //     email (expiry_reminder_sent_at guards against re-sending it
 //     every day until it actually expires).
 //  2. Applications whose expiry_date has passed get flipped to
 //     activation_status/status = 'expired' and a notice email.
+//  3. Applications sitting in "awaiting_acceptance" for 3+ days with
+//     no nudge yet get a one-time reminder to go accept their
+//     agreement (agreement_reminder_sent_at guards against repeats;
+//     admin-generate-agreement.js resets it if a new agreement is
+//     ever generated for the same application).
 //
 // Vercel automatically sends "Authorization: Bearer <CRON_SECRET>"
 // on cron-triggered requests once CRON_SECRET is set as an env var —
@@ -16,10 +21,13 @@
 
 const { sql, logEvent } = require('../_db');
 const { readConfig } = require('../_configStore');
-const { sendExpiryReminderEmail, sendExpiredEmail } = require('../_notify');
+const { sendExpiryReminderEmail, sendExpiredEmail, sendAgreementReminderEmail } = require('../_notify');
+const { generateResumeToken } = require('../_appAuth');
 
 const CRON_SECRET = process.env.CRON_SECRET;
 const REMINDER_WINDOW_DAYS = 7;
+const AGREEMENT_REMINDER_AFTER_DAYS = 3;
+const SITE_URL = process.env.SITE_URL || 'https://workspace4you.co';
 
 module.exports = async function handler(req, res) {
   if (CRON_SECRET) {
@@ -72,7 +80,27 @@ module.exports = async function handler(req, res) {
       expiredCount++;
     }
 
-    return res.status(200).json({ success: true, remindersSent, expiredCount });
+    // 3. Agreements still awaiting acceptance after AGREEMENT_REMINDER_AFTER_DAYS
+    const { rows: awaitingAcceptance } = await sql`
+      SELECT * FROM applications
+      WHERE agreement_status = 'awaiting_acceptance'
+        AND agreement_generated_at IS NOT NULL
+        AND agreement_generated_at <= now() - interval '1 day' * ${AGREEMENT_REMINDER_AFTER_DAYS}
+        AND agreement_reminder_sent_at IS NULL
+    `;
+    let agreementRemindersSent = 0;
+    for (const app of awaitingAcceptance) {
+      if (app.email) {
+        const resumeToken = generateResumeToken(app.application_code);
+        const resumeUrl = resumeToken ? `${SITE_URL}/agreement.html?resume=${resumeToken}` : `${SITE_URL}/agreement.html`;
+        await sendAgreementReminderEmail(app, resumeUrl);
+      }
+      await sql`UPDATE applications SET agreement_reminder_sent_at = now() WHERE id = ${app.id}`;
+      await logEvent(app.id, 'system', 'Agreement acceptance reminder sent');
+      agreementRemindersSent++;
+    }
+
+    return res.status(200).json({ success: true, remindersSent, expiredCount, agreementRemindersSent });
   } catch (err) {
     console.error('cron/check-expirations error:', err);
     return res.status(500).json({ error: 'Server error: ' + err.message });

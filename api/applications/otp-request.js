@@ -14,6 +14,7 @@ const { requireOwnedApplication } = require('../_appLoad');
 const { normalizeEmail, generateOtp, hashOtp } = require('../_otp');
 const { sendOtpEmail } = require('../_notify');
 const { setCorsHeaders } = require('../_cors');
+const { checkOtpRateLimit, getClientIp } = require('../_rateLimit');
 
 module.exports = async function handler(req, res) {
   setCorsHeaders(req, res, { allowAuthHeader: true });
@@ -50,10 +51,16 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Unknown purpose' });
     }
 
+    const clientIp = getClientIp(req);
+    const rateLimit = await checkOtpRateLimit(normalized, clientIp);
+    if (!rateLimit.allowed) {
+      return res.status(429).json({ error: rateLimit.reason });
+    }
+
     const otp = generateOtp();
     await sql`
-      INSERT INTO otp_challenges (application_id, purpose, channel, email, otp_hash, expires_at)
-      VALUES (${app.id}, ${purpose}, 'email', ${normalized}, ${hashOtp(otp)}, now() + interval '10 minutes')
+      INSERT INTO otp_challenges (application_id, purpose, channel, email, ip, otp_hash, expires_at)
+      VALUES (${app.id}, ${purpose}, 'email', ${normalized}, ${clientIp}, ${hashOtp(otp)}, now() + interval '10 minutes')
     `;
     const emailResult = await sendOtpEmail(normalized, otp);
     await logEvent(app.id, 'system', 'Verification code ' + (emailResult.sent ? 'sent' : 'FAILED to send') + ' for ' + purpose);

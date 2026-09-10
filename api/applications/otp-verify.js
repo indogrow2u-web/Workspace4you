@@ -10,7 +10,7 @@
 const { sql, getApplicationByCode, logEvent } = require('../_db');
 const { requireOwnedApplication } = require('../_appLoad');
 const { normalizeEmail, verifyOtpHash } = require('../_otp');
-const { generateAccessToken, hashToken } = require('../_appAuth');
+const { generateAccessToken, createSession } = require('../_appAuth');
 const { setCorsHeaders } = require('../_cors');
 
 const MAX_ATTEMPTS = 5;
@@ -71,9 +71,12 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    // purpose === 'track' — issue a fresh access token
+    // purpose === 'track' — issue a fresh access token as an ADDITIONAL
+    // session, not a replacement, so an already-authenticated device
+    // (e.g. the browser that originally applied) doesn't get silently
+    // logged out just because Track Application was used elsewhere.
     const accessToken = generateAccessToken();
-    await sql`UPDATE applications SET access_token_hash = ${hashToken(accessToken)}, updated_at = now() WHERE id = ${app.id}`;
+    await createSession(app.id, accessToken);
     await logEvent(app.id, 'customer', 'Accessed application via Track Application (email code)');
 
     return res.status(200).json({ success: true, code: app.application_code, accessToken });

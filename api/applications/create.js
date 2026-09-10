@@ -9,7 +9,7 @@
 
 const { sql, logEvent } = require('../_db');
 const { buildApplicationCode } = require('../_appId');
-const { generateAccessToken, hashToken } = require('../_appAuth');
+const { generateAccessToken, hashToken, createSession } = require('../_appAuth');
 const { setCorsHeaders } = require('../_cors');
 
 module.exports = async function handler(req, res) {
@@ -37,6 +37,7 @@ module.exports = async function handler(req, res) {
     const code = buildApplicationCode(id, created_at);
 
     await sql`UPDATE applications SET application_code = ${code} WHERE id = ${id}`;
+    await createSession(id, accessToken);
     await logEvent(id, 'system', 'Application created (' + duration + ')');
 
     return res.status(200).json({ success: true, code, accessToken });

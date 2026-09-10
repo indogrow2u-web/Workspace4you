@@ -25,13 +25,27 @@ module.exports = async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const id = body && body.id;
+    const force = !!(body && body.force);
     if (!id) return res.status(400).json({ error: 'Missing template id' });
 
-    const { rows } = await sql`SELECT status FROM agreement_templates WHERE id = ${id} LIMIT 1`;
+    const { rows } = await sql`SELECT status, content FROM agreement_templates WHERE id = ${id} LIMIT 1`;
     const template = rows[0];
     if (!template) return res.status(404).json({ error: 'Template not found' });
     if (template.status !== 'draft') {
       return res.status(400).json({ error: 'Only a draft can be published' });
+    }
+
+    // Guard against publishing the seeded starter (or any draft) that still
+    // has bracketed fill-in-the-blank text like "[Replace with your actual
+    // policy]" — square brackets are the standard convention for
+    // instructional placeholders in legal drafting, so a real, finished
+    // clause is very unlikely to contain one. `force` lets an admin publish
+    // anyway if they genuinely want literal brackets in the text.
+    if (!force && /\[[^\]]*\]/.test(template.content)) {
+      return res.status(400).json({
+        error: 'This draft still contains bracketed placeholder text (e.g. "[Replace with your actual policy]"). Replace it before publishing, or confirm again to publish anyway.',
+        needsConfirmation: true
+      });
     }
 
     await sql`UPDATE agreement_templates SET status = 'archived' WHERE status = 'published'`;

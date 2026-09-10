@@ -957,16 +957,19 @@ function previewAgreement(){
   box.innerHTML = rendered;
   box.style.display = 'block';
 }
-function publishAgreement(){
+function publishAgreement(force){
   if(!currentAgreementId){ showToast('Save this as a draft first'); return; }
-  if(!confirm('Publish this version? It becomes the template used for every agreement generated from now on. Agreements already issued to customers are never affected.')) return;
+  if(!force && !confirm('Publish this version? It becomes the template used for every agreement generated from now on. Agreements already issued to customers are never affected.')) return;
   var token = getAdminToken();
-  fetch('/api/agreement-templates/publish', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({id:currentAgreementId})})
+  fetch('/api/agreement-templates/publish', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({id:currentAgreementId, force:!!force})})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(!d.success) throw new Error(d.error||'Publish failed');
-      showToast('Published');
-      loadAgreements();
+      if(d.success){ showToast('Published'); loadAgreements(); return; }
+      if(d.needsConfirmation){
+        if(confirm(d.error + '\n\nPublish anyway?')) publishAgreement(true);
+        return;
+      }
+      throw new Error(d.error||'Publish failed');
     })
     .catch(function(e){ showToast(e.message); });
 }

@@ -116,8 +116,12 @@ module.exports = async function handler(req, res){
     if (refund && refund.payment_id) {
       try {
         var refundApp = await getApplicationByPaymentId(refund.payment_id);
-        if (refundApp) {
-          var newRefundStatus = event.event === 'refund.processed' ? 'processed' : 'failed';
+        var newRefundStatus = event.event === 'refund.processed' ? 'processed' : 'failed';
+        // Idempotency guard: Razorpay commonly retries webhook delivery for
+        // reliability. Without this, a retried delivery would re-log a
+        // duplicate audit trail entry every time (harmless to the actual
+        // status, but clutters Activity History).
+        if (refundApp && refundApp.refund_status !== newRefundStatus) {
           await sql`UPDATE applications SET refund_status = ${newRefundStatus}, updated_at = now() WHERE id = ${refundApp.id}`;
           await logEvent(refundApp.id, 'system', 'Refund ' + newRefundStatus + ' (webhook) — ₹' + Math.round((refund.amount || 0) / 100) + ' (Razorpay ' + refund.id + ')');
         }

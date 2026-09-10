@@ -121,4 +121,18 @@ async function sendExpiredEmail(app, contactPhone, contactEmail) {
   return sendEmail(app.email, `Workspace4you — Your Virtual Address (${app.application_code}) has expired`, html);
 }
 
-module.exports = { sendEmail, sendSms, sendOtpEmail, sendApplicationReceiptEmail, sendExpiryReminderEmail, sendExpiredEmail };
+async function sendAgreementReminderEmail(app, resumeUrl) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">
+      <h2 style="color:#0B3A8D">Workspace4you</h2>
+      <p>Your Virtual Office Agreement is still waiting for your acceptance.</p>
+      <p><strong>Application ID:</strong> ${escapeHtml(app.application_code)}<br>
+      <strong>Agreement Version:</strong> ${escapeHtml(app.agreement_version)}</p>
+      <p>Your Virtual Address can't be activated until you review and accept it.</p>
+      <p><a href="${escapeHtml(resumeUrl)}" style="display:inline-block;background:#0B3A8D;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">View Agreement</a></p>
+    </div>
+  `;
+  return sendEmail(app.email, `Workspace4you — Reminder: your agreement is waiting (${app.application_code})`, html);
+}
+
+module.exports = { sendEmail, sendSms, sendOtpEmail, sendApplicationReceiptEmail, sendExpiryReminderEmail, sendExpiredEmail, sendAgreementReminderEmail };

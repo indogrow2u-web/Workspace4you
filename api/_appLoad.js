@@ -21,7 +21,7 @@ async function requireOwnedApplication(req, res, code) {
     return null;
   }
   const token = getBearerToken(req);
-  if (!verifyAccessToken(app, token)) {
+  if (!(await verifyAccessToken(app, token))) {
     res.status(401).json({ error: 'Unauthorized' });
     return null;
   }

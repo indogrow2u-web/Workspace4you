@@ -6,8 +6,8 @@
 // since possession of the emailed/texted link is itself the proof.
 // ============================================================
 
-const { sql, getApplicationByCode, logEvent } = require('../_db');
-const { verifyResumeToken, generateAccessToken, hashToken } = require('../_appAuth');
+const { getApplicationByCode, logEvent } = require('../_db');
+const { verifyResumeToken, generateAccessToken, createSession } = require('../_appAuth');
 const { setCorsHeaders } = require('../_cors');
 
 module.exports = async function handler(req, res) {
@@ -28,8 +28,10 @@ module.exports = async function handler(req, res) {
       return res.status(404).json({ error: 'Application not found' });
     }
 
+    // Additive — mints a new session without invalidating any other
+    // device that's already authenticated for this application.
     const accessToken = generateAccessToken();
-    await sql`UPDATE applications SET access_token_hash = ${hashToken(accessToken)}, updated_at = now() WHERE id = ${app.id}`;
+    await createSession(app.id, accessToken);
     await logEvent(app.id, 'customer', 'Resumed application via emailed link');
 
     return res.status(200).json({ success: true, code: app.application_code, accessToken });

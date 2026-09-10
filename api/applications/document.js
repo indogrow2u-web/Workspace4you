@@ -27,7 +27,10 @@ module.exports = async function handler(req, res) {
     const authHeader = req.headers['authorization'] || '';
     const token = authHeader.indexOf('Bearer ') === 0 ? authHeader.slice(7) : '';
     const isAdmin = verifyAdminToken(token);
-    const isOwner = !isAdmin && verifyAccessToken(app, token);
+    // verifyAccessToken is async (it's a DB lookup) — must be awaited, not
+    // just referenced, or this would always be a truthy Promise regardless
+    // of whether the token is actually valid.
+    const isOwner = isAdmin ? false : await verifyAccessToken(app, token);
     if (!isAdmin && !isOwner) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

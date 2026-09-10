@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS applications (
   activation_date        DATE,
   expiry_date            DATE,
   expiry_reminder_sent_at TIMESTAMPTZ, -- set once a "renewal coming up" email has gone out, so the daily check doesn't re-send it
+  agreement_generated_at   TIMESTAMPTZ, -- when admin-generate-agreement.js last ran, for the "still not accepted" reminder below
+  agreement_reminder_sent_at TIMESTAMPTZ, -- set once a "please accept your agreement" nudge has gone out
 
   -- Refund — Phase 4
   refund_status           TEXT NOT NULL DEFAULT 'none', -- none | pending | processed | failed
@@ -91,6 +93,9 @@ CREATE TABLE IF NOT EXISTS applications (
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
 -- Safe to run against a table created before expiry reminders/refund.failed existed.
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS expiry_reminder_sent_at TIMESTAMPTZ;
+-- Safe to run against a table created before agreement reminders existed.
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS agreement_generated_at TIMESTAMPTZ;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS agreement_reminder_sent_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_applications_mobile ON applications (mobile);
 CREATE INDEX IF NOT EXISTS idx_applications_status ON applications (status);
@@ -116,6 +121,7 @@ CREATE TABLE IF NOT EXISTS otp_challenges (
   channel           TEXT NOT NULL DEFAULT 'email', -- email | sms
   mobile            TEXT,
   email             TEXT,
+  ip                TEXT,
   otp_hash          TEXT,
   attempts          INTEGER NOT NULL DEFAULT 0,
   expires_at        TIMESTAMPTZ NOT NULL,
@@ -128,10 +134,30 @@ CREATE TABLE IF NOT EXISTS otp_challenges (
 ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS channel TEXT NOT NULL DEFAULT 'email';
 ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS otp_hash TEXT;
+ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS ip TEXT;
 ALTER TABLE otp_challenges ALTER COLUMN mobile DROP NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_otp_mobile ON otp_challenges (mobile, purpose);
 CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_challenges (email, purpose);
+CREATE INDEX IF NOT EXISTS idx_otp_email_created ON otp_challenges (email, created_at);
+CREATE INDEX IF NOT EXISTS idx_otp_ip_created ON otp_challenges (ip, created_at);
+
+-- Multiple simultaneous access tokens per application (one per device/
+-- browser that has authenticated), so opening a resume link or Track
+-- Application on a second device no longer silently invalidates the
+-- first. applications.access_token_hash is kept (still set at creation)
+-- but is no longer what's checked — see api/_appAuth.js.
+CREATE TABLE IF NOT EXISTS application_sessions (
+  id              SERIAL PRIMARY KEY,
+  application_id  INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  token_hash      TEXT NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at      TIMESTAMPTZ NOT NULL,
+  last_used_at    TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_application ON application_sessions (application_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON application_sessions (token_hash);
 
 -- ============================================================
 -- Phase 2 — verification documents, agreement templates
