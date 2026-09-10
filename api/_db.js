@@ -1,12 +1,53 @@
 // ============================================================
-// Workspace4You — Shared Postgres helpers (Vercel Postgres / Neon)
-// Provision the database via Vercel → Storage → Create Database →
-// Postgres, then run db/schema.sql against it once. Vercel injects
-// the connection env vars (POSTGRES_URL etc.) automatically once
-// the database is linked to this project.
+// Workspace4You — Shared Postgres helpers
+//
+// Uses `pg` (node-postgres) directly, talking the standard Postgres
+// wire protocol over TLS — NOT @vercel/postgres. That package's `sql`
+// client only speaks Neon's proprietary HTTP-proxy protocol, so it
+// cannot connect to a non-Neon Postgres server (Supabase included)
+// no matter how correct the connection string is — every query fails
+// with a generic "fetch failed". `pg` works against any standard
+// Postgres provider.
+//
+// Reads the connection string from POSTGRES_URL, which Vercel sets
+// automatically once a Postgres database (native or via the Supabase
+// marketplace integration) is linked to this project under Storage —
+// that's the pooled, serverless-safe connection string.
 // ============================================================
 
-const { sql } = require('@vercel/postgres');
+const { Pool } = require('pg');
+
+const connectionString =
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.DATABASE_URL;
+
+let pool;
+function getPool() {
+  if (!pool) {
+    if (!connectionString) {
+      throw new Error('No database connection string found — set POSTGRES_URL (Vercel sets this automatically once a database is linked under Storage)');
+    }
+    pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false }, // required by Supabase's managed Postgres
+      max: 3
+    });
+  }
+  return pool;
+}
+
+// Mimics @vercel/postgres's `sql` tagged template — sql`SELECT ... WHERE id = ${id}`
+// — so every existing call site across the codebase keeps working unchanged.
+async function sql(strings, ...values) {
+  let text = '';
+  strings.forEach(function (chunk, i) {
+    text += chunk;
+    if (i < values.length) text += '$' + (i + 1);
+  });
+  const result = await getPool().query(text, values);
+  return { rows: result.rows };
+}
 
 async function getApplicationByCode(code) {
   const { rows } = await sql`
