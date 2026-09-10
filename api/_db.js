@@ -101,4 +101,13 @@ async function touchApplication(id) {
   await sql`UPDATE applications SET updated_at = now() WHERE id = ${id}`;
 }
 
-module.exports = { sql, getApplicationByCode, getApplicationById, getApplicationByPaymentId, logEvent, touchApplication };
+// Runs a raw, possibly multi-statement SQL string (no parameter binding —
+// pg's simple query protocol executes semicolon-separated statements in
+// sequence). Used only by api/admin-migrate.js to apply db/schema.sql
+// through this exact same connection, so there's never any ambiguity
+// about which database actually gets migrated.
+async function rawQuery(text) {
+  return getPool().query(text);
+}
+
+module.exports = { sql, rawQuery, getApplicationByCode, getApplicationById, getApplicationByPaymentId, logEvent, touchApplication };

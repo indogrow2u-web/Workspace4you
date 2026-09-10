@@ -301,6 +301,12 @@ tr:hover td{background:#FAFBFF}
 
   <!-- SETUP TAB -->
   <div id="tab-setup" style="display:none">
+    <div class="panel" style="padding:32px;margin-bottom:24px">
+      <h2 style="font-family:'Poppins',sans-serif;font-size:20px;font-weight:800;margin-bottom:10px">Virtual Address Database</h2>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:20px;line-height:1.6">Applies db/schema.sql through the live app's own database connection — this is the reliable way to set it up or apply updates, since it can't accidentally target the wrong Supabase project the way pasting SQL into a browser-based editor can. Safe to run more than once.</p>
+      <button class="save-btn" style="width:auto;padding:12px 24px" id="migrateBtn" onclick="runMigration()">Run Database Migration</button>
+      <div class="save-note" id="migrateNote"></div>
+    </div>
     <div class="panel" style="padding:32px">
       <h2 style="font-family:'Poppins',sans-serif;font-size:20px;font-weight:800;margin-bottom:24px">Google Sheets Setup Guide</h2>
       <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:16px 20px;margin-bottom:28px;font-size:13px">
@@ -422,6 +428,24 @@ function switchTab(name,btn){
   document.getElementById('tab-'+name).style.display='block';
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   btn.classList.add('active');
+}
+
+// ---- DATABASE MIGRATION ----
+function runMigration(){
+  var token = getAdminToken();
+  if(!token){ doLogout(); return; }
+  var btn = document.getElementById('migrateBtn');
+  var note = document.getElementById('migrateNote');
+  btn.textContent='Running...'; btn.disabled=true; note.innerHTML='';
+  fetch('/api/admin-migrate', {method:'POST', headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Migration failed');
+      note.innerHTML = '<span style="color:var(--green);font-weight:600">✓ '+esc(d.message||'Done')+'</span>';
+      showToast('Database migration complete');
+    })
+    .catch(function(e){ note.innerHTML = '<span style="color:var(--red)">'+esc(e.message)+'</span>'; })
+    .finally(function(){ btn.textContent='Run Database Migration'; btn.disabled=false; });
 }
 
 // ---- LEADS ----
