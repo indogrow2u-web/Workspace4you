@@ -91,4 +91,34 @@ async function sendApplicationReceiptEmail(app, resumeUrl, phoneDisplay) {
   return sendEmail(app.email, `Workspace4You — Application ${app.application_code} received`, html);
 }
 
-module.exports = { sendEmail, sendSms, sendOtpEmail, sendApplicationReceiptEmail };
+async function sendExpiryReminderEmail(app, daysLeft, contactPhone, contactEmail) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">
+      <h2 style="color:#0B3A8D">Workspace4You</h2>
+      <p>Your Virtual Address is renewing soon.</p>
+      <p><strong>Application ID:</strong> ${escapeHtml(app.application_code)}<br>
+      <strong>Business:</strong> ${escapeHtml(app.business_name || '')}<br>
+      <strong>Valid until:</strong> ${escapeHtml(app.expiry_date)} (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)</p>
+      <p>To renew, please contact us before the expiry date so your address stays active without interruption.</p>
+      <p>Call <a href="tel:${escapeHtml(contactPhone)}">${escapeHtml(contactPhone)}</a> or email <a href="mailto:${escapeHtml(contactEmail)}">${escapeHtml(contactEmail)}</a>.</p>
+    </div>
+  `;
+  return sendEmail(app.email, `Workspace4You — Your Virtual Address renews in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`, html);
+}
+
+async function sendExpiredEmail(app, contactPhone, contactEmail) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#101828">
+      <h2 style="color:#0B3A8D">Workspace4You</h2>
+      <p>Your Virtual Address has expired.</p>
+      <p><strong>Application ID:</strong> ${escapeHtml(app.application_code)}<br>
+      <strong>Business:</strong> ${escapeHtml(app.business_name || '')}<br>
+      <strong>Expired on:</strong> ${escapeHtml(app.expiry_date)}</p>
+      <p>To reactivate your Virtual Address, please contact us as soon as possible.</p>
+      <p>Call <a href="tel:${escapeHtml(contactPhone)}">${escapeHtml(contactPhone)}</a> or email <a href="mailto:${escapeHtml(contactEmail)}">${escapeHtml(contactEmail)}</a>.</p>
+    </div>
+  `;
+  return sendEmail(app.email, `Workspace4You — Your Virtual Address (${app.application_code}) has expired`, html);
+}
+
+module.exports = { sendEmail, sendSms, sendOtpEmail, sendApplicationReceiptEmail, sendExpiryReminderEmail, sendExpiredEmail };

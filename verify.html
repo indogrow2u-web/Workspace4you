@@ -12,6 +12,8 @@
 .file-drop{border:2px dashed #E5E7EB;border-radius:14px;padding:28px;text-align:center;cursor:pointer;transition:all .2s}
 .file-drop:hover{border-color:var(--blue)}
 .file-drop.has-file{border-color:var(--green);background:#F0FDF4}
+.doc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:13px}
+.doc-row:last-child{border-bottom:none}
 </style>
 </head>
 <body>
@@ -43,9 +45,23 @@
         <div class="price-row"><span>Identifier on file</span><strong id="v-identifier">—</strong></div>
       </div>
 
+      <div id="prevDocsWrap" style="display:none;margin-bottom:20px">
+        <label style="display:block;font-size:13px;font-weight:700;color:var(--dark);margin-bottom:8px">Already submitted</label>
+        <div id="prevDocs" style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:12px;padding:12px 16px"></div>
+      </div>
+
       <div class="form-group">
-        <label>Upload Identity Document *</label>
-        <div class="hint" style="margin-bottom:8px">PAN card, Aadhaar, Passport, or Driving License — JPG, PNG, or PDF, max 3MB.</div>
+        <label>Document Type *</label>
+        <select id="docType">
+          <option value="identity">Identity Document (PAN / Aadhaar / Passport / Driving License)</option>
+          <option value="business_proof">Business Proof (registration certificate, deed, etc.)</option>
+          <option value="other">Other (as requested)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Upload File *</label>
+        <div class="hint" style="margin-bottom:8px">JPG, PNG, or PDF, max 3MB.</div>
         <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
           <div id="fileDropLabel">Click to choose a file</div>
         </div>
@@ -54,15 +70,11 @@
 
       <div class="error-msg" id="err"></div>
       <button class="btn-primary" id="submitBtn" onclick="submitVerification()">Submit for Review →</button>
-    </div>
-  </div>
 
-  <div class="step" id="doneStep">
-    <div class="card" style="text-align:center">
-      <div style="font-size:52px;margin-bottom:6px">✓</div>
-      <h2>Submitted</h2>
-      <p class="sub">Your document has been received. Our team will review your application and update your status.</p>
-      <a href="track.html" class="btn-primary" style="display:block;text-decoration:none;box-sizing:border-box">Track Application Status →</a>
+      <div id="uploadedNote" style="display:none;margin-top:16px;background:#F0FDF4;border-color:#86EFAC" class="info-box">
+        <strong style="color:#065F46">✓ Uploaded.</strong> Our team will review your application. You can upload another document above if needed, or head back to Track Application.
+      </div>
+      <a href="track.html" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:10px">Track Application Status →</a>
     </div>
   </div>
 </div>
@@ -84,6 +96,8 @@ var appCode = localStorage.getItem('ws4y_app_code') || '';
 var accessToken = localStorage.getItem('ws4y_app_token') || '';
 var selectedFile = null;
 
+var DOC_TYPE_LABELS = { identity:'Identity Document', business_proof:'Business Proof', other:'Other' };
+
 document.getElementById('fileInput').addEventListener('change', function(e){
   var f = e.target.files[0];
   if(!f) return;
@@ -95,9 +109,24 @@ document.getElementById('fileInput').addEventListener('change', function(e){
   document.getElementById('fileDropLabel').textContent = '✓ ' + f.name;
 });
 
+function loadPrevDocs(){
+  fetch('/api/applications/my-documents?code='+encodeURIComponent(appCode), {headers:{'Authorization':'Bearer '+accessToken}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success || !d.documents || !d.documents.length) return;
+      document.getElementById('prevDocsWrap').style.display = 'block';
+      document.getElementById('prevDocs').innerHTML = d.documents.map(function(doc){
+        var when = new Date(doc.created_at).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+        return '<div class="doc-row"><span>'+(DOC_TYPE_LABELS[doc.doc_type]||doc.doc_type)+' — '+doc.filename+'</span><span style="color:var(--gray)">'+when+'</span></div>';
+      }).join('');
+    })
+    .catch(function(){});
+}
+
 function submitVerification(){
   var err = document.getElementById('err'); err.style.display='none';
   if(!selectedFile){ err.textContent='Please choose a file to upload'; err.style.display='block'; return; }
+  var docType = document.getElementById('docType').value;
   var btn = document.getElementById('submitBtn');
   btn.textContent='Uploading...'; btn.disabled=true;
 
@@ -107,12 +136,19 @@ function submitVerification(){
     fetch('/api/applications/upload-document', {
       method:'POST',
       headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+accessToken},
-      body:JSON.stringify({code:appCode, docType:'identity', filename:selectedFile.name, mimeType:selectedFile.type, dataBase64:base64})
+      body:JSON.stringify({code:appCode, docType:docType, filename:selectedFile.name, mimeType:selectedFile.type, dataBase64:base64})
     })
       .then(function(r){return r.json();})
       .then(function(d){
         if(!d.success) throw new Error(d.error||'Upload failed');
-        goStep('doneStep');
+        showToast('Uploaded ✓');
+        document.getElementById('uploadedNote').style.display = 'block';
+        document.getElementById('actionRequiredBox').style.display = 'none';
+        selectedFile = null;
+        document.getElementById('fileInput').value = '';
+        document.getElementById('fileDrop').classList.remove('has-file');
+        document.getElementById('fileDropLabel').textContent = 'Click to choose a file';
+        loadPrevDocs();
       })
       .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
       .finally(function(){ btn.textContent='Submit for Review →'; btn.disabled=false; });
@@ -139,6 +175,7 @@ function submitVerification(){
         document.getElementById('actionRequiredBox').style.display = 'block';
         document.getElementById('actionMsg').textContent = a.infoRequested;
       }
+      loadPrevDocs();
       goStep('mainStep');
     })
     .catch(function(e){

@@ -78,9 +78,10 @@ CREATE TABLE IF NOT EXISTS applications (
   activation_status      TEXT NOT NULL DEFAULT 'not_activated', -- not_activated | ready | active | expired | terminated
   activation_date        DATE,
   expiry_date            DATE,
+  expiry_reminder_sent_at TIMESTAMPTZ, -- set once a "renewal coming up" email has gone out, so the daily check doesn't re-send it
 
   -- Refund — Phase 4
-  refund_status           TEXT NOT NULL DEFAULT 'none', -- none | pending | processed
+  refund_status           TEXT NOT NULL DEFAULT 'none', -- none | pending | processed | failed
 
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -88,6 +89,8 @@ CREATE TABLE IF NOT EXISTS applications (
 
 -- Safe to run against a table created before the email-OTP switch.
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+-- Safe to run against a table created before expiry reminders/refund.failed existed.
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS expiry_reminder_sent_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_applications_mobile ON applications (mobile);
 CREATE INDEX IF NOT EXISTS idx_applications_status ON applications (status);

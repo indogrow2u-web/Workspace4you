@@ -11,14 +11,22 @@
 //  - The Virtual Address application flow (/api/applications/*):
 //    if the order's notes carry an application_code, marks that
 //    application's payment as verified in Postgres, same as
-//    /api/applications/verify-payment would have.
+//    /api/applications/verify-payment would have. Also the ONLY
+//    place refund_status ever moves from "pending" to "processed"/
+//    "failed" — api/applications/admin-refund.js only records
+//    Razorpay's immediate response, which for many payment methods
+//    is still "pending" until Razorpay finishes it asynchronously.
 // A payment.captured event is routed to whichever flow created the
-// order, by checking for notes.application_code.
+// order, by checking for notes.application_code. Refund events are
+// always applications-flow (the old booking flow has no refund
+// tracking) and are correlated by payment_id instead.
 //
 // Setup (do this after deploying):
 //   1. Razorpay Dashboard -> Settings -> Webhooks -> Add New Webhook
+//        (or edit the existing one for this URL)
 //        URL: https://www.workspace4you.co/api/razorpay-webhook
-//        Active events: payment.captured, payment.failed
+//        Active events: payment.captured, payment.failed,
+//                        refund.processed, refund.failed
 //        Generate a Secret (any strong random string)
 //   2. Vercel -> Project Settings -> Environment Variables
 //        Add RAZORPAY_WEBHOOK_SECRET with the exact same secret value
@@ -26,7 +34,7 @@
 
 const crypto = require('crypto');
 const { logRow } = require('./_sheets');
-const { sql, getApplicationByCode, logEvent } = require('./_db');
+const { sql, getApplicationByCode, getApplicationByPaymentId, logEvent } = require('./_db');
 const { generateResumeToken } = require('./_appAuth');
 const { sendApplicationReceiptEmail } = require('./_notify');
 
@@ -98,6 +106,26 @@ module.exports = async function handler(req, res){
     event = JSON.parse(raw.toString('utf8'));
   } catch (err) {
     return res.status(400).json({ error: 'Invalid JSON' });
+  }
+
+  // Refunds (applications flow only — the old booking flow has no
+  // refund_status concept to update). Correlated by payment_id since a
+  // refund event doesn't reliably carry the original payment's notes.
+  if (event.event === 'refund.processed' || event.event === 'refund.failed') {
+    var refund = event.payload && event.payload.refund && event.payload.refund.entity;
+    if (refund && refund.payment_id) {
+      try {
+        var refundApp = await getApplicationByPaymentId(refund.payment_id);
+        if (refundApp) {
+          var newRefundStatus = event.event === 'refund.processed' ? 'processed' : 'failed';
+          await sql`UPDATE applications SET refund_status = ${newRefundStatus}, updated_at = now() WHERE id = ${refundApp.id}`;
+          await logEvent(refundApp.id, 'system', 'Refund ' + newRefundStatus + ' (webhook) — ₹' + Math.round((refund.amount || 0) / 100) + ' (Razorpay ' + refund.id + ')');
+        }
+      } catch (err) {
+        console.error('Webhook refund update failed:', err);
+      }
+    }
+    return res.status(200).json({ received: true });
   }
 
   var payment = event.payload && event.payload.payment && event.payload.payment.entity;

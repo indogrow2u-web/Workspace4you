@@ -22,6 +22,13 @@ async function getApplicationById(id) {
   return rows[0] || null;
 }
 
+async function getApplicationByPaymentId(paymentId) {
+  const { rows } = await sql`
+    SELECT * FROM applications WHERE razorpay_payment_id = ${paymentId} LIMIT 1
+  `;
+  return rows[0] || null;
+}
+
 async function logEvent(applicationId, actor, event) {
   await sql`
     INSERT INTO application_events (application_id, actor, event)
@@ -33,4 +40,4 @@ async function touchApplication(id) {
   await sql`UPDATE applications SET updated_at = now() WHERE id = ${id}`;
 }
 
-module.exports = { sql, getApplicationByCode, getApplicationById, logEvent, touchApplication };
+module.exports = { sql, getApplicationByCode, getApplicationById, getApplicationByPaymentId, logEvent, touchApplication };

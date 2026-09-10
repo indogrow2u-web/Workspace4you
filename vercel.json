@@ -13,5 +13,11 @@
         { "key": "Cache-Control", "value": "no-store" }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/check-expirations",
+      "schedule": "0 3 * * *"
+    }
   ]
 }
