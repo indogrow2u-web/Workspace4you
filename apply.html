@@ -194,11 +194,14 @@ function authHeaders(){
 }
 
 // ---- Load live prices + contact for display ----
+var livePrices = { virtualAddressMonthly: 1799, virtualAddressAnnual: 1499 };
 fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
   var p = cfg.prices || {};
   var c = cfg.contact || {};
-  if(p.virtualAddressMonthly) document.getElementById('p-month').textContent = '₹'+parseInt(p.virtualAddressMonthly).toLocaleString('en-IN')+'/mo';
-  if(p.virtualAddressAnnual) document.getElementById('p-annual').textContent = '₹'+parseInt(p.virtualAddressAnnual).toLocaleString('en-IN')+'/mo';
+  if(p.virtualAddressMonthly) livePrices.virtualAddressMonthly = parseInt(p.virtualAddressMonthly);
+  if(p.virtualAddressAnnual) livePrices.virtualAddressAnnual = parseInt(p.virtualAddressAnnual);
+  if(p.virtualAddressMonthly) document.getElementById('p-month').textContent = '₹'+livePrices.virtualAddressMonthly.toLocaleString('en-IN')+'/mo';
+  if(p.virtualAddressAnnual) document.getElementById('p-annual').textContent = '₹'+livePrices.virtualAddressAnnual.toLocaleString('en-IN')+'/mo';
   if(c.phone){ supportPhone = c.phone; supportPhoneTel = 'tel:'+c.phone.replace(/\s/g,''); document.getElementById('s-phone').textContent = c.phone; document.getElementById('s-phone').href = supportPhoneTel; }
 }).catch(function(){});
 
@@ -349,9 +352,16 @@ function submitAddress(){
 // ---- STEP 5: PAYMENT ----
 function renderPaymentSummary(){
   document.getElementById('paySummaryDuration').textContent = duration === 'annual' ? '12-Month Plan' : 'Month-to-month';
-  document.getElementById('payRows').innerHTML = '<div class="price-row"><span>Deposit + advance + GST 18%</span><span>Calculated at checkout</span></div>';
-  document.getElementById('payTotal').textContent = 'See next step';
+  var rate = duration === 'annual' ? livePrices.virtualAddressAnnual : livePrices.virtualAddressMonthly;
+  var gst = Math.round(2*rate*0.18);
+  var total = 2*rate + gst;
+  document.getElementById('payRows').innerHTML =
+    '<div class="price-row"><span>Deposit (1 month, refundable)</span><span>'+money(rate)+'</span></div>'+
+    '<div class="price-row"><span>Advance (1 month)</span><span>'+money(rate)+'</span></div>'+
+    '<div class="price-row"><span>GST 18%</span><span>'+money(gst)+'</span></div>';
+  document.getElementById('payTotal').textContent = money(total);
 }
+function money(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
 function proceedToPayment(){
   var btn = document.getElementById('payBtn');
   btn.textContent='Opening payment...'; btn.disabled=true;
