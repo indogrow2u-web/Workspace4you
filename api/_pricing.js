@@ -9,6 +9,12 @@
 const SEAT_CAP = 6;
 const SOLD_OUT = { 'Power Seat': true, 'Glass Cabin': true };
 
+// Virtual Address commitment terms, in months. 'month' is the only
+// non-committed option — everything else locks the customer in for that
+// many months and is charged that many months' advance upfront (see
+// computeTotal below), not just 1 month like 'month' gets.
+const VA_TERM_MONTHS = { month: 1, annual: 12, '24month': 24, '36month': 36 };
+
 function seatFactor(n) {
   const g = Math.floor(n / 3), r = n - g * 3;
   let factor = g * 2.25;
@@ -39,8 +45,17 @@ function computeTotal(planName, opts, prices) {
 
   let base;
   if (def.type === 'virtual') {
-    const rate = (opts && opts.duration === 'annual') ? def.annualRate : def.monthlyRate;
-    base = 2 * rate;
+    const dur = (opts && opts.duration) || 'month';
+    const months = VA_TERM_MONTHS[dur] || 1;
+    // Month-to-month: standard (higher) monthly rate, 1 month deposit +
+    // 1 month advance -- unchanged from before. Any committed term
+    // (12/24/36 months): the discounted annual rate, 1 month deposit +
+    // the FULL committed term paid as advance upfront (e.g. 24 months
+    // locks in 24 months' advance, not just 1) -- these are two
+    // deliberately different rules, not the same formula with a
+    // different month count.
+    const rate = dur === 'month' ? def.monthlyRate : def.annualRate;
+    base = rate * (1 + months);
   } else if (def.type === 'onetime') {
     base = def.vaRate + def.service;
   } else if (def.type === 'day') {
@@ -55,4 +70,4 @@ function computeTotal(planName, opts, prices) {
   return base + Math.round(base * 0.18);
 }
 
-module.exports = { computeTotal, seatFactor, SEAT_CAP, SOLD_OUT };
+module.exports = { computeTotal, seatFactor, SEAT_CAP, SOLD_OUT, VA_TERM_MONTHS };

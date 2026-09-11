@@ -655,6 +655,7 @@ function showToast(msg){var t=document.getElementById('toast');t.textContent=msg
 setInterval(loadLeads, 60000);
 
 // ---- VIRTUAL ADDRESS APPLICATIONS (Phase 1: view only) ----
+var VA_DURATION_LABELS = { month: 'Monthly', annual: '12-Month', '24month': '24-Month', '36month': '36-Month' };
 var VA_STATUS_LABELS = {
   draft:'Draft', payment_pending:'Payment Pending', payment_received:'Payment Received',
   verification_pending:'Verification Pending', action_required:'Action Required', under_review:'Under Review',
@@ -898,7 +899,7 @@ function renderVaTable(){
       '<td style="font-weight:600">'+esc(a.full_name||'—')+'</td>'+
       '<td>'+esc(a.business_name||'—')+'</td>'+
       '<td>'+esc(a.mobile||'—')+'</td>'+
-      '<td style="font-size:12px">'+esc(a.plan_name||'—')+' ('+esc(a.duration||'—')+')'+(a.inventory_requested?' <span title="Inventory receiving requested">📦</span>':'')+'</td>'+
+      '<td style="font-size:12px">'+esc(a.plan_name||'—')+' ('+esc(VA_DURATION_LABELS[a.duration]||a.duration||'—')+')'+(a.inventory_requested?' <span title="Inventory receiving requested">📦</span>':'')+'</td>'+
       '<td>'+payBadge+'</td>'+
       '<td><span class="status-badge '+sc+'">'+esc(VA_STATUS_LABELS[a.status]||a.status)+'</span></td>'+
       '<td style="font-size:12px;color:var(--gray)">'+created+'</td>'+
@@ -966,7 +967,7 @@ function renderVaDetail(a, events){
       '<div class="editor-card"><h3>Customer</h3>'+vaField('Name',a.full_name)+vaField('Mobile',a.mobile+(a.mobile_verified_at?' ✓ verified':' (not verified — SMS OTP on hold)'))+vaField('Email',a.email+(a.email_verified_at?' ✓ verified':' (unverified)'))+'</div>'+
       '<div class="editor-card"><h3>Business</h3>'+vaField('Type',a.business_type)+vaField('Business Name',a.business_name)+vaField('Activity',a.business_activity)+vaField('PAN',a.pan)+vaField('GSTIN',a.gstin)+vaField('Udyam',a.udyam_number)+vaField('CIN',a.cin)+vaField('LLPIN',a.llpin)+(a.no_gst_udyam?vaField('Note','No GST/Udyam — flagged for manual verification'):'')+'</div>'+
       '<div class="editor-card"><h3>Address Usage</h3>'+vaField('Selected uses',addressUsage)+vaField('Inventory receiving requested',a.inventory_requested?'YES — needs admin decision':'No')+'</div>'+
-      '<div class="editor-card"><h3>Payment</h3>'+vaField('Plan',a.plan_name+' ('+a.duration+')')+vaField('Amount',a.payment_amount?('₹'+parseInt(a.payment_amount).toLocaleString('en-IN')):'—')+vaField('Payment Status',a.payment_status)+vaField('Refund Status',a.refund_status)+vaField('Razorpay Payment ID',a.razorpay_payment_id)+vaField('Razorpay Order ID',a.razorpay_order_id)+'</div>'+
+      '<div class="editor-card"><h3>Payment</h3>'+vaField('Plan',a.plan_name+' ('+(VA_DURATION_LABELS[a.duration]||a.duration)+')')+vaField('Amount',a.payment_amount?('₹'+parseInt(a.payment_amount).toLocaleString('en-IN')):'—')+vaField('Payment Status',a.payment_status)+vaField('Refund Status',a.refund_status)+vaField('Razorpay Payment ID',a.razorpay_payment_id)+vaField('Razorpay Order ID',a.razorpay_order_id)+'</div>'+
       '<div class="editor-card"><h3>Verification &amp; Review</h3>'+vaField('Verification Status',a.verification_status)+vaField('Admin Review Status',a.admin_review_status)+vaField('Info Requested',a.info_requested)+'</div>'+
       '<div class="editor-card"><h3>Agreement &amp; Activation</h3>'+vaField('Agreement Version',a.agreement_version)+vaField('Agreement Status',a.agreement_status)+vaField('Activation Status',a.activation_status)+vaField('Activation Date',a.activation_date)+vaField('Expiry Date',a.expiry_date)+'</div>'+
     '</div>'+

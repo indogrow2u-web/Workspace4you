@@ -9,6 +9,9 @@
 const { sql, logEvent } = require('../_db');
 const { requireOwnedApplication } = require('../_appLoad');
 const { setCorsHeaders } = require('../_cors');
+const { VA_TERM_MONTHS } = require('../_pricing');
+
+const ALLOWED_DURATIONS = Object.keys(VA_TERM_MONTHS);
 
 const BUSINESS_TYPES = ['Proprietorship', 'Private Limited Company', 'LLP', 'Partnership', 'Other'];
 const ADDRESS_USES = [
@@ -111,7 +114,7 @@ module.exports = async function handler(req, res) {
       await logEvent(app.id, 'customer', 'Business details saved (' + businessType + ')');
 
     } else if (step === 'duration') {
-      const dur = d.duration === 'annual' ? 'annual' : 'month';
+      const dur = ALLOWED_DURATIONS.indexOf(d.duration) !== -1 ? d.duration : 'month';
       await sql`UPDATE applications SET duration = ${dur}, updated_at = now() WHERE id = ${app.id}`;
       await logEvent(app.id, 'customer', 'Plan term changed to ' + dur);
 

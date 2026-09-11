@@ -161,7 +161,7 @@
   <div class="step" id="step4">
     <div class="card">
       <h2>Choose Your Term &amp; Pay</h2>
-      <p class="sub">Pick Monthly or 12-Months — your total updates instantly, nothing hidden.</p>
+      <p class="sub">Pick your term — a longer commitment means a lower monthly rate. Your total updates instantly, nothing hidden.</p>
       <div class="radio-cards" id="paymentDurationCards">
         <div class="radio-card selected" data-duration="month" onclick="switchDuration('month')">
           <div>Monthly</div>
@@ -170,6 +170,14 @@
         <div class="radio-card" data-duration="annual" onclick="switchDuration('annual')">
           <div>12 Months</div>
           <div id="pd-annual" style="font-size:12px;margin-top:4px;color:var(--gray)">Best value</div>
+        </div>
+        <div class="radio-card" data-duration="24month" onclick="switchDuration('24month')">
+          <div>24 Months</div>
+          <div id="pd-24month" style="font-size:12px;margin-top:4px;color:var(--gray)">2-year commitment</div>
+        </div>
+        <div class="radio-card" data-duration="36month" onclick="switchDuration('36month')">
+          <div>36 Months</div>
+          <div id="pd-36month" style="font-size:12px;margin-top:4px;color:var(--gray)">3-year commitment</div>
         </div>
       </div>
       <p class="sub" style="margin-top:-8px">Virtual Address · <span id="paySummaryDuration">Monthly</span></p>
@@ -258,7 +266,12 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
   if(p.virtualAddressMonthly) livePrices.virtualAddressMonthly = parseInt(p.virtualAddressMonthly);
   if(p.virtualAddressAnnual) livePrices.virtualAddressAnnual = parseInt(p.virtualAddressAnnual);
   if(p.virtualAddressMonthly) document.getElementById('pd-month').textContent = '₹'+livePrices.virtualAddressMonthly.toLocaleString('en-IN')+'/mo · Flexible, cancel anytime';
-  if(p.virtualAddressAnnual) document.getElementById('pd-annual').textContent = '₹'+livePrices.virtualAddressAnnual.toLocaleString('en-IN')+'/mo · Best value';
+  if(p.virtualAddressAnnual){
+    var annualLabel = '₹'+livePrices.virtualAddressAnnual.toLocaleString('en-IN')+'/mo';
+    document.getElementById('pd-annual').textContent = annualLabel+' · Best value';
+    document.getElementById('pd-24month').textContent = annualLabel+' · 2-year commitment';
+    document.getElementById('pd-36month').textContent = annualLabel+' · 3-year commitment';
+  }
   if(c.phone){ supportPhone = c.phone; supportPhoneTel = 'tel:'+c.phone.replace(/\s/g,''); document.getElementById('s-phone').textContent = c.phone; document.getElementById('s-phone').href = supportPhoneTel; }
 }).catch(function(){});
 
@@ -480,14 +493,23 @@ function submitAddress(){
 }
 
 // ---- STEP 4: PAYMENT ----
+// Mirrors api/_pricing.js's VA_TERM_MONTHS/computeTotal exactly, for
+// display only — the server (api/applications/pay.js) always computes
+// the actual charged amount itself from the application's stored
+// duration, never from anything this preview sends.
+var VA_TERM_LABELS = { month: 'Month-to-month', annual: '12-Month Plan', '24month': '24-Month Plan', '36month': '36-Month Plan' };
+var VA_TERM_MONTHS = { month: 1, annual: 12, '24month': 24, '36month': 36 };
 function renderPaymentSummary(){
-  document.getElementById('paySummaryDuration').textContent = duration === 'annual' ? '12-Month Plan' : 'Month-to-month';
-  var rate = duration === 'annual' ? livePrices.virtualAddressAnnual : livePrices.virtualAddressMonthly;
-  var gst = Math.round(2*rate*0.18);
-  var total = 2*rate + gst;
+  document.getElementById('paySummaryDuration').textContent = VA_TERM_LABELS[duration] || 'Month-to-month';
+  var months = VA_TERM_MONTHS[duration] || 1;
+  var rate = duration === 'month' ? livePrices.virtualAddressMonthly : livePrices.virtualAddressAnnual;
+  var base = rate * (1 + months);
+  var gst = Math.round(base*0.18);
+  var total = base + gst;
+  var advanceLabel = duration === 'month' ? 'Advance (1 month)' : 'Advance (' + months + ' months — full term)';
   document.getElementById('payRows').innerHTML =
     '<div class="price-row"><span>Deposit (1 month, refundable)</span><span>'+money(rate)+'</span></div>'+
-    '<div class="price-row"><span>Advance (1 month)</span><span>'+money(rate)+'</span></div>'+
+    '<div class="price-row"><span>'+advanceLabel+'</span><span>'+money(months*rate)+'</span></div>'+
     '<div class="price-row"><span>GST 18%</span><span>'+money(gst)+'</span></div>';
   document.getElementById('payTotal').textContent = money(total);
 }

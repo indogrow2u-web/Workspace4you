@@ -11,6 +11,9 @@ const { sql, logEvent } = require('../_db');
 const { buildApplicationCode } = require('../_appId');
 const { generateAccessToken, hashToken, createSession } = require('../_appAuth');
 const { setCorsHeaders } = require('../_cors');
+const { VA_TERM_MONTHS } = require('../_pricing');
+
+const ALLOWED_DURATIONS = Object.keys(VA_TERM_MONTHS); // 'month' | 'annual' | '24month' | '36month'
 
 module.exports = async function handler(req, res) {
   setCorsHeaders(req, res, { allowAuthHeader: true });
@@ -20,7 +23,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const duration = body && body.duration === 'annual' ? 'annual' : 'month';
+    const duration = body && ALLOWED_DURATIONS.indexOf(body.duration) !== -1 ? body.duration : 'month';
 
     const accessToken = generateAccessToken();
     const accessTokenHash = hashToken(accessToken);

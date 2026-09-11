@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS applications (
 
   -- Plan (this system is scoped to Virtual Address only)
   plan_name              TEXT NOT NULL DEFAULT 'Virtual Address',
-  duration               TEXT NOT NULL DEFAULT 'month', -- 'month' | 'annual'
+  duration               TEXT NOT NULL DEFAULT 'month', -- 'month' | 'annual' (12mo) | '24month' | '36month'
 
   -- Personal (Step 2). Verification currently runs over EMAIL (via Resend)
   -- rather than SMS OTP — mobile is still collected but not verified yet.
