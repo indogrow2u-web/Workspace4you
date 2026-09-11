@@ -57,28 +57,42 @@ module.exports = async function handler(req, res) {
     if (step === 'personal') {
       const fullName = clip(d.fullName, 120);
       const mobile = clip(d.mobile, 20);
-      const email = clip(d.email, 160).toLowerCase();
 
       if (!fullName) return res.status(400).json({ error: 'Please enter your full name' });
       if (mobile.replace(/\D/g, '').length < 10) return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
-      if (!EMAIL_REGEX.test(email)) return res.status(400).json({ error: 'Please enter a valid email address' });
 
-      // If the email changed from whatever was actually OTP-verified, the
-      // verification no longer applies to it — don't let a stale
-      // emailVerified flag on the client carry an unverified address
-      // through as if it were confirmed.
-      const emailChanged = (app.email || '').toLowerCase() !== email.toLowerCase();
+      // Email is optional at this step now — it's collected (and
+      // verified) later, at the Payment step, via otp-request.js /
+      // otp-verify.js. Only touch the email columns if one was actually
+      // sent here.
+      const emailProvided = d.email !== undefined && d.email !== null && String(d.email).trim() !== '';
+      if (emailProvided) {
+        const email = clip(d.email, 160).toLowerCase();
+        if (!EMAIL_REGEX.test(email)) return res.status(400).json({ error: 'Please enter a valid email address' });
 
-      await sql`
-        UPDATE applications SET
-          full_name = ${fullName},
-          mobile = ${mobile},
-          email = ${email},
-          email_verified_at = CASE WHEN ${emailChanged} THEN NULL ELSE email_verified_at END,
-          updated_at = now()
-        WHERE id = ${app.id}
-      `;
-      await logEvent(app.id, 'customer', 'Personal details saved' + (emailChanged ? ' (email changed — re-verification required)' : ''));
+        // If the email changed from whatever was actually OTP-verified, the
+        // verification no longer applies to it — don't let a stale
+        // emailVerified flag on the client carry an unverified address
+        // through as if it were confirmed.
+        const emailChanged = (app.email || '').toLowerCase() !== email.toLowerCase();
+
+        await sql`
+          UPDATE applications SET
+            full_name = ${fullName},
+            mobile = ${mobile},
+            email = ${email},
+            email_verified_at = CASE WHEN ${emailChanged} THEN NULL ELSE email_verified_at END,
+            updated_at = now()
+          WHERE id = ${app.id}
+        `;
+        await logEvent(app.id, 'customer', 'Personal details saved' + (emailChanged ? ' (email changed — re-verification required)' : ''));
+      } else {
+        await sql`
+          UPDATE applications SET full_name = ${fullName}, mobile = ${mobile}, updated_at = now()
+          WHERE id = ${app.id}
+        `;
+        await logEvent(app.id, 'customer', 'Personal details saved');
+      }
 
     } else if (step === 'business') {
       const businessType = BUSINESS_TYPES.indexOf(d.businessType) !== -1 ? d.businessType : null;

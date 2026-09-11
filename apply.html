@@ -81,8 +81,6 @@
       <p class="sub">Tell us a bit about yourself — no payment needed yet. You'll see your exact total, itemized, at the very last step.</p>
       <div class="form-group"><label>Full Name *</label><input type="text" id="p-name" placeholder="Your full name"></div>
       <div class="form-group"><label>Mobile Number *</label><input type="tel" id="p-mobile" placeholder="10-digit mobile number"></div>
-      <div class="form-group"><label>Email Address *</label><input type="email" id="p-email" placeholder="your@email.com"></div>
-      <p style="font-size:12px;color:var(--gray);margin:-8px 0 16px;line-height:1.6">🔒 We'll verify this email — just before payment, at the last step — to protect your business address from misuse.</p>
       <div class="error-msg" id="step1Err"></div>
       <button class="btn-primary" onclick="submitPersonal()" id="step1Btn">Continue →</button>
       <a href="index.html" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">← Back to Home</a>
@@ -149,11 +147,11 @@
       <h2>Choose Your Term &amp; Pay</h2>
 
       <div id="payVerifyBlock">
-        <p class="sub">Last step before payment — verify your email so we can send your receipt and keep your application secure.</p>
+        <p class="sub">Last step before payment — add and verify your email so we can send your receipt and keep your application secure.</p>
         <div class="form-group">
-          <label>Email Address</label>
+          <label>Email Address *</label>
           <div style="display:flex;gap:8px">
-            <input type="email" id="pay-email-display" style="flex:1" disabled>
+            <input type="email" id="p-email" placeholder="your@email.com" style="flex:1">
             <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="sendOtpBtn" onclick="sendOtp()">Send Code</button>
           </div>
         </div>
@@ -378,21 +376,21 @@ function switchDuration(d){
     .catch(function(){ showToast('Could not save your plan choice — please try again.'); });
 }
 
-// ---- STEP 1: PERSONAL INFO (email verification now lives at Step 4/Payment) ----
+// ---- STEP 1: PERSONAL INFO ----
+// Email itself (not just its verification) now lives at Step 4/Payment,
+// not here — Step 1 is just name + mobile.
 var emailVerified = false;
 var lastVerifiedEmail = ''; // if p-email changes after this, re-verification is required
 function submitPersonal(){
   var err = document.getElementById('step1Err'); err.style.display='none';
   var name = document.getElementById('p-name').value.trim();
   var mobile = document.getElementById('p-mobile').value.trim();
-  var email = document.getElementById('p-email').value.trim();
   if(!appCode || !accessToken){ err.textContent='Still setting up your application — please wait a moment and try again.'; err.style.display='block'; ensureApplication(); return; }
   if(!name){ err.textContent='Please enter your full name'; err.style.display='block'; return; }
   if(mobile.replace(/\D/g,'').length < 10){ err.textContent='Please enter a valid 10-digit mobile number'; err.style.display='block'; return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent='Please enter a valid email address'; err.style.display='block'; return; }
   var btn = document.getElementById('step1Btn');
   btn.textContent='Saving...'; btn.disabled=true;
-  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'personal', data:{fullName:name, mobile:mobile, email:email}})})
+  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'personal', data:{fullName:name, mobile:mobile}})})
     .then(function(r){return r.json();})
     .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(2); })
     .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
@@ -410,11 +408,11 @@ function updatePayVerifyUI(){
 }
 function enterPaymentStep(){
   var email = document.getElementById('p-email').value.trim();
-  document.getElementById('pay-email-display').value = email;
-  // The customer could have gone back and changed their email after
-  // verifying once — that verification no longer applies to the new
-  // address (save.js already clears email_verified_at server-side when
-  // this happens; mirror that here too).
+  // If they've already verified this exact email (e.g. resuming, or
+  // coming back from Business/Address without touching it), skip
+  // re-asking. Otherwise — including the normal case of a brand new
+  // application, where this field starts empty — verification is
+  // required before the price/Pay section reveals itself.
   if(email !== lastVerifiedEmail) emailVerified = false;
   updatePayVerifyUI();
   renderPaymentSummary();
@@ -622,24 +620,37 @@ function proceedToPayment(){
     }
   }
 
+  // If the stored appCode/accessToken turn out to be dead (expired
+  // session, or left over from before a redeploy) this starts a brand
+  // new application instead of silently leaving the page holding
+  // credentials that will fail on every subsequent request — that used
+  // to surface as a confusing "Unauthorized" only once the customer
+  // clicked Continue, with no indication anything was wrong before then.
+  function startFresh(){
+    appCode = ''; accessToken = '';
+    localStorage.removeItem('ws4y_app_code');
+    localStorage.removeItem('ws4y_app_token');
+    ensureApplication();
+    goStep(1);
+  }
   function loadTrack(){
     fetch('/api/applications/track?code='+encodeURIComponent(appCode), {headers:authHeaders()})
       .then(function(r){return r.json();})
-      .then(function(d){ if(d.success) resumeAt(d); })
-      .catch(function(){});
+      .then(function(d){ if(d.success) resumeAt(d); else startFresh(); })
+      .catch(function(){ startFresh(); });
   }
 
   if(resumeToken){
     fetch('/api/applications/resume?token='+encodeURIComponent(resumeToken))
       .then(function(r){return r.json();})
       .then(function(d){
-        if(!d.success) { showToast(d.error||'This link is no longer valid'); return; }
+        if(!d.success) { showToast(d.error||'This link is no longer valid'); startFresh(); return; }
         appCode = d.code; accessToken = d.accessToken;
         localStorage.setItem('ws4y_app_code', appCode);
         localStorage.setItem('ws4y_app_token', accessToken);
         loadTrack();
       })
-      .catch(function(){});
+      .catch(function(){ startFresh(); });
   } else if(appCode && accessToken){
     loadTrack();
   } else {
