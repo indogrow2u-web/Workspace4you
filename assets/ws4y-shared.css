@@ -138,9 +138,18 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif}
 
 @media(max-width:860px){
   .apply-shell{flex-direction:column;padding:16px 20px 0;gap:14px}
+  /* On mobile, DOM order = scroll order (flex-direction:column), and the
+     sidebar comes first in the HTML (it's the left column on desktop) —
+     without this, someone has to scroll past the whole photo/headline/
+     testimonial block before ever reaching the actual form, which is
+     very likely why real visitors load the page (creating a draft) but
+     never get as far as typing their name. Reordering visually here
+     keeps the desktop DOM/JS untouched and just puts the form first. */
+  .wrap{order:-1}
   .trust-sidebar{width:100%}
   .trust-slideshow{height:160px}
   .trust-secure{display:none}
+  .trust-testi{display:none}
 }
 
 /* FOOTER (apply.html) */
