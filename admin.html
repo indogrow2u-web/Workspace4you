@@ -254,6 +254,7 @@ tr:hover td{background:#FAFBFF}
             <input type="date" id="va-dateTo" class="search-box" style="width:auto" onchange="onVaDateFilterChange()">
           </label>
           <button class="refresh-btn" onclick="clearVaDateFilter()">Clear Dates</button>
+          <button class="filter-btn" id="va-contactOnlyBtn" onclick="toggleVaContactOnly(this)" title="Only rows with a saved phone number — people you can actually call, regardless of how far they got">📞 Has Phone</button>
           <div class="filter-row" id="va-filterRow">
             <button class="filter-btn active" onclick="setVaFilter('all',this)">All</button>
             <button class="filter-btn" onclick="setVaFilter('draft',this)">Draft</button>
@@ -667,6 +668,12 @@ var VA_STATUS_LABELS = {
 var allVaApps = [];
 var allVaEvents = []; // application_id, event, created_at — every step transition, timestamped
 var currentVaFilter = 'all';
+var vaContactOnly = false;
+function toggleVaContactOnly(btn){
+  vaContactOnly = !vaContactOnly;
+  btn.classList.toggle('active', vaContactOnly);
+  renderVaTable();
+}
 
 function loadVaApplications(){
   var token = getAdminToken();
@@ -725,8 +732,10 @@ function renderVaStats(){
   var paid = allVaApps.filter(function(a){return a.payment_status==='paid';}).length;
   var pending = allVaApps.filter(function(a){return ['verification_pending','under_review','action_required'].indexOf(a.status)!==-1;}).length;
   var active = allVaApps.filter(function(a){return a.status==='active';}).length;
+  var callable = allVaApps.filter(function(a){return a.mobile && a.mobile.trim();}).length;
   document.getElementById('va-stats').innerHTML =
     '<div class="stat-card"><div class="stat-label">Total Applications</div><div class="stat-val blue">'+allVaApps.length+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">📞 Callable Leads</div><div class="stat-val gold">'+callable+'</div></div>'+
     '<div class="stat-card"><div class="stat-label">Paid</div><div class="stat-val green">'+paid+'</div></div>'+
     '<div class="stat-card"><div class="stat-label">Awaiting Review</div><div class="stat-val gold">'+pending+'</div></div>'+
     '<div class="stat-card"><div class="stat-label">Active</div><div class="stat-val green">'+active+'</div></div>';
@@ -746,7 +755,8 @@ function getVaFiltered(){
     var mf = currentVaFilter==='all' || a.status===currentVaFilter;
     var ms = !q || [a.application_code,a.full_name,a.business_name,a.mobile,a.gstin,a.cin,a.llpin].some(function(v){return (v||'').toLowerCase().includes(q);});
     var md = inVaDateRange(a.created_at, range);
-    return mf && ms && md;
+    var mc = !vaContactOnly || !!(a.mobile && a.mobile.trim());
+    return mf && ms && md && mc;
   });
 }
 

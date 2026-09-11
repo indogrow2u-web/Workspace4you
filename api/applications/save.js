@@ -56,10 +56,17 @@ module.exports = async function handler(req, res) {
 
     if (step === 'personal') {
       const fullName = clip(d.fullName, 120);
-      const mobile = clip(d.mobile, 20);
+      // Indian mobile: exactly 10 digits, starting 6-9 (a leading 91
+      // country code is stripped first). The old check only required
+      // "at least 10 digits after stripping non-digits", which let
+      // through obvious junk (e.g. "1234567895") that's useless as a
+      // callable phone number for admin follow-up.
+      let mobileDigits = clip(d.mobile, 20).replace(/\D/g, '');
+      if (mobileDigits.length === 12 && mobileDigits.indexOf('91') === 0) mobileDigits = mobileDigits.slice(2);
+      const mobile = mobileDigits;
 
       if (!fullName) return res.status(400).json({ error: 'Please enter your full name' });
-      if (mobile.replace(/\D/g, '').length < 10) return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
+      if (!/^[6-9]\d{9}$/.test(mobile)) return res.status(400).json({ error: 'Please enter a valid 10-digit Indian mobile number' });
 
       // Email is optional at this step now — it's collected (and
       // verified) later, at the Payment step, via otp-request.js /

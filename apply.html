@@ -82,8 +82,8 @@
     <div class="card">
       <h2>Let's Get Started</h2>
       <p class="sub">Tell us a bit about yourself — no payment needed yet. You'll see your exact total, itemized, at the very last step.</p>
-      <div class="form-group"><label>Full Name *</label><input type="text" id="p-name" placeholder="Your full name"></div>
-      <div class="form-group"><label>Mobile Number *</label><input type="tel" id="p-mobile" placeholder="10-digit mobile number"></div>
+      <div class="form-group"><label>Full Name *</label><input type="text" id="p-name" placeholder="Your full name" onblur="autoSavePersonal()"></div>
+      <div class="form-group"><label>Mobile Number *</label><input type="tel" id="p-mobile" placeholder="10-digit mobile number" onblur="autoSavePersonal()"></div>
       <div class="error-msg" id="step1Err"></div>
       <button class="btn-primary" onclick="submitPersonal()" id="step1Btn">Continue →</button>
       <a href="index.html" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">← Back to Home</a>
@@ -463,13 +463,43 @@ function waitForSession(cb, attemptsLeft, alreadyRetried){
   setTimeout(function(){ waitForSession(cb, attemptsLeft - 1, alreadyRetried); }, 400);
 }
 
+// Fires on blur of the name/mobile fields — a real fraction of visitors
+// type their name and number and then never click Continue (get
+// distracted, close the tab, change their mind mid-form). Without this,
+// that name/mobile is never written anywhere, even though it's a real,
+// callable lead. Silent and best-effort on purpose: no loading state, no
+// error toast, no navigation — it must never interfere with the actual
+// Continue flow, which still does its own full validation + save.
+// Indian mobile: exactly 10 digits, starting 6-9. The old check (just
+// "at least 10 digits after stripping") let through obvious junk like
+// "1234567895" or numbers with extra digits — useless for a "callable
+// leads" list. Returns the clean 10-digit string, or null.
+function cleanMobile(raw){
+  var d = (raw || '').replace(/\D/g, '');
+  if (d.length === 12 && d.indexOf('91') === 0) d = d.slice(2); // strip a leading 91 country code
+  return /^[6-9]\d{9}$/.test(d) ? d : null;
+}
+
+var autoSaveTimer = null;
+function autoSavePersonal(){
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(function(){
+    if(!sessionReady || !appCode || !accessToken) return; // nothing to save against yet
+    var name = document.getElementById('p-name').value.trim();
+    var mobile = cleanMobile(document.getElementById('p-mobile').value);
+    if(!name || !mobile) return; // not a callable lead yet
+    fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'personal', data:{fullName:name, mobile:mobile}})})
+      .catch(function(){}); // best-effort — submitPersonal() is still the real save path
+  }, 150);
+}
+
 function submitPersonal(){
   var err = document.getElementById('step1Err'); err.style.display='none';
   if(!sessionReady){ waitForSession(submitPersonal, 6); return; }
   var name = document.getElementById('p-name').value.trim();
-  var mobile = document.getElementById('p-mobile').value.trim();
+  var mobile = cleanMobile(document.getElementById('p-mobile').value);
   if(!name){ err.textContent='Please enter your full name'; err.style.display='block'; return; }
-  if(mobile.replace(/\D/g,'').length < 10){ err.textContent='Please enter a valid 10-digit mobile number'; err.style.display='block'; return; }
+  if(!mobile){ err.textContent='Please enter a valid 10-digit Indian mobile number'; err.style.display='block'; return; }
   var btn = document.getElementById('step1Btn');
   btn.textContent='Saving...'; btn.disabled=true;
   fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'personal', data:{fullName:name, mobile:mobile}})})
