@@ -782,13 +782,13 @@ function exportVaCSV(){
 // Conversion" and "Median Time on Step" are computed against the row
 // immediately above it.
 var VA_MILESTONES = [
-  {key:'created',  label:'1 · Plan Selected',      match:function(e){return e.indexOf('Application created')===0;}},
-  {key:'verified', label:'2 · Email Verified',      match:function(e){return e==='Email address verified';}},
-  {key:'personal', label:'2 · Details Saved',       match:function(e){return e.indexOf('Personal details saved')===0;}},
-  {key:'business', label:'3 · Business Saved',      match:function(e){return e.indexOf('Business details saved')===0;}},
-  {key:'address',  label:'4 · Address Saved',       match:function(e){return e.indexOf('Address usage saved')===0;}},
-  {key:'paystart', label:'5 · Payment Opened',      match:function(e){return e.indexOf('Razorpay order created')===0;}},
-  {key:'paydone',  label:'5 · Payment Completed',   match:function(e){return e.indexOf('Payment verified')===0;}}
+  {key:'created',  label:'Application Started',    match:function(e){return e.indexOf('Application created')===0;}},
+  {key:'verified', label:'1 · Email Verified',      match:function(e){return e==='Email address verified';}},
+  {key:'personal', label:'1 · Details Saved',       match:function(e){return e.indexOf('Personal details saved')===0;}},
+  {key:'business', label:'2 · Business Saved',      match:function(e){return e.indexOf('Business details saved')===0;}},
+  {key:'address',  label:'3 · Address Saved',       match:function(e){return e.indexOf('Address usage saved')===0;}},
+  {key:'paystart', label:'4 · Payment Opened',      match:function(e){return e.indexOf('Razorpay order created')===0;}},
+  {key:'paydone',  label:'4 · Payment Completed',   match:function(e){return e.indexOf('Payment verified')===0;}}
 ];
 
 function msToHuman(ms){
