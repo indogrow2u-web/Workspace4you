@@ -121,15 +121,15 @@ tr:hover td{background:#FAFBFF}
   <div class="page-sub">Manage leads, track payments, and edit site content</div>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('leads',this)">Leads & Payments</button>
-    <button class="tab" onclick="switchTab('vaApps',this)">Virtual Address</button>
+    <button class="tab active" onclick="switchTab('vaApps',this)">Virtual Address</button>
+    <button class="tab" onclick="switchTab('leads',this)">Leads & Payments</button>
     <button class="tab" onclick="switchTab('agreements',this)">Agreement Templates</button>
     <button class="tab" onclick="switchTab('editor',this)">Site Content</button>
     <button class="tab" onclick="switchTab('setup',this)">Setup Guide</button>
   </div>
 
   <!-- LEADS TAB -->
-  <div id="tab-leads">
+  <div id="tab-leads" style="display:none">
     <div class="stats-row">
       <div class="stat-card"><div class="stat-label">Total Leads</div><div class="stat-val blue" id="st-total">—</div></div>
       <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-val green" id="st-paid">—</div></div>
@@ -229,7 +229,7 @@ tr:hover td{background:#FAFBFF}
   </div>
 
   <!-- VIRTUAL ADDRESS APPLICATIONS TAB -->
-  <div id="tab-vaApps" style="display:none">
+  <div id="tab-vaApps">
     <div style="background:#E8F0FE;border:1px solid #c7d9fb;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:var(--blue);font-weight:600">
       Identity verification here is manual review — open the uploaded document, check it against the details on file, then Approve, Request More Information, or Reject. Agreements only generate after Approve, and only from whichever template is Published in the Agreement Templates tab.
     </div>
@@ -387,7 +387,7 @@ function getAdminToken(){
 function enterDashboard(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('dashboard').style.display='block';
-  loadLeads();
+  loadVaApplications();
   var saved = localStorage.getItem(SHEET_URL_KEY);
   if(saved) document.getElementById('sheetUrlInput').value = saved;
 }
@@ -434,6 +434,7 @@ function doLogout(){
 function switchTab(name,btn){
   if(name==='editor') loadEditorValues();
   if(name==='vaApps') loadVaApplications();
+  if(name==='leads') loadLeads();
   if(name==='agreements') loadAgreements();
   if(name==='setup'){
     var saved=localStorage.getItem(SHEET_URL_KEY);
