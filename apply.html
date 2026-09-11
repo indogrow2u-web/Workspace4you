@@ -227,6 +227,15 @@
 var STEPS = ['Details','Business','Address','Payment','Done'];
 var appCode = localStorage.getItem('ws4y_app_code') || '';
 var accessToken = localStorage.getItem('ws4y_app_token') || '';
+// True only once appCode/accessToken are CONFIRMED valid — either a
+// fresh create succeeded, or an existing session resumed successfully.
+// A returning visitor's stored appCode/accessToken are non-empty but
+// not yet trustworthy the instant the page loads: loadTrack() hasn't
+// checked them yet, and if they turn out to be dead, startFresh()
+// replaces them. Gating on "is something present" instead of this flag
+// let a fast click slip through using stale, about-to-be-replaced
+// credentials and fail with a confusing "Unauthorized".
+var sessionReady = false;
 var duration = 'month';
 var bizType = '';
 var inventoryRequested = null;
@@ -343,7 +352,7 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
 // real form. The actual term (Monthly/12-Months) is chosen later, at the
 // Payment step, via switchDuration() below.
 function ensureApplication(){
-  if(appCode && accessToken) return; // already have a draft (resumed)
+  if(sessionReady) return; // already confirmed good
   fetch('/api/applications/create', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({duration:duration})})
     .then(function(r){return r.json();})
     .then(function(d){
@@ -351,6 +360,7 @@ function ensureApplication(){
       appCode = d.code; accessToken = d.accessToken;
       localStorage.setItem('ws4y_app_code', appCode);
       localStorage.setItem('ws4y_app_token', accessToken);
+      sessionReady = true;
       track('apply_started', {duration: duration, application_code: appCode});
     })
     .catch(function(){ showToast('Could not start your application — check your connection and try again.'); });
@@ -381,11 +391,24 @@ function switchDuration(d){
 // not here — Step 1 is just name + mobile.
 var emailVerified = false;
 var lastVerifiedEmail = ''; // if p-email changes after this, re-verification is required
+
+// A page load already has ensureApplication() or loadTrack()/startFresh()
+// in flight to make sessionReady true — this just waits for whichever one
+// is running rather than kicking off a competing, duplicate creation. If
+// it genuinely never resolves (dead network etc.) it gives up after ~2.5s
+// and asks for a manual retry, at which point the earlier attempt has
+// almost always already finished anyway.
+function waitForSession(cb, attemptsLeft){
+  if(sessionReady){ cb(); return; }
+  if(attemptsLeft <= 0){ showToast('Still setting up your application — please tap Continue again in a moment.'); return; }
+  setTimeout(function(){ waitForSession(cb, attemptsLeft - 1); }, 400);
+}
+
 function submitPersonal(){
   var err = document.getElementById('step1Err'); err.style.display='none';
+  if(!sessionReady){ waitForSession(submitPersonal, 6); return; }
   var name = document.getElementById('p-name').value.trim();
   var mobile = document.getElementById('p-mobile').value.trim();
-  if(!appCode || !accessToken){ err.textContent='Still setting up your application — please wait a moment and try again.'; err.style.display='block'; ensureApplication(); return; }
   if(!name){ err.textContent='Please enter your full name'; err.style.display='block'; return; }
   if(mobile.replace(/\D/g,'').length < 10){ err.textContent='Please enter a valid 10-digit mobile number'; err.style.display='block'; return; }
   var btn = document.getElementById('step1Btn');
@@ -420,7 +443,7 @@ function enterPaymentStep(){
 function sendOtp(){
   var email = document.getElementById('p-email').value.trim();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Enter a valid email address'); return; }
-  if(!appCode || !accessToken){ showToast('Still setting up your application — please wait a moment and try again.'); ensureApplication(); return; }
+  if(!sessionReady){ waitForSession(sendOtp, 6); return; }
   var btn = document.getElementById('sendOtpBtn');
   btn.textContent = 'Sending...'; btn.disabled = true;
   fetch('/api/applications/otp-request', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, email:email, purpose:'signup'})})
@@ -593,6 +616,7 @@ function proceedToPayment(){
 
   function resumeAt(track){
     var a = track.application;
+    sessionReady = true; // reaching here means loadTrack()'s fetch succeeded — this appCode/accessToken are confirmed good
     if(a.duration) applyDurationSelection(a.duration);
     if(a.fullName) document.getElementById('p-name').value = a.fullName;
     if(a.email) document.getElementById('p-email').value = a.email;
