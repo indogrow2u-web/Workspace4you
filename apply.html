@@ -74,32 +74,11 @@
 <div class="wrap">
   <div class="progress-track" id="progressTrack"></div>
 
-  <!-- STEP 1: SELECT PLAN -->
+  <!-- STEP 1: PERSONAL INFORMATION -->
   <div class="step active" id="step1">
     <div class="card">
-      <h2>Get Your Virtual Address</h2>
-      <p class="sub">Just pick a term to start — we'll walk you through the rest, and show your exact total before you ever pay.</p>
-      <div class="radio-cards">
-        <div class="radio-card selected" data-duration="month" onclick="selectDuration('month')">
-          <div>Monthly</div>
-          <div style="font-size:11px;color:var(--gray);margin-top:4px;font-weight:600">Flexible, cancel anytime</div>
-        </div>
-        <div class="radio-card" data-duration="annual" onclick="selectDuration('annual')">
-          <div>12 Months</div>
-          <div style="font-size:11px;color:var(--gray);margin-top:4px;font-weight:600">Best value</div>
-        </div>
-      </div>
-      <div class="info-box">No payment yet — this step just starts your application. You'll see the full, itemized total (deposit + advance + GST, nothing hidden) right before you pay, at the very last step.</div>
-      <button class="btn-primary" onclick="startApplication()" id="step1Btn">Continue →</button>
-      <a href="index.html" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">← Back to Home</a>
-    </div>
-  </div>
-
-  <!-- STEP 2: PERSONAL INFORMATION -->
-  <div class="step" id="step2">
-    <div class="card">
-      <h2>Your Details</h2>
-      <p class="sub">Let's get your application started.</p>
+      <h2>Let's Get Started</h2>
+      <p class="sub">Tell us a bit about yourself — no payment needed yet. You'll see your exact total, itemized, at the very last step.</p>
       <div class="form-group"><label>Full Name *</label><input type="text" id="p-name" placeholder="Your full name"></div>
       <div class="form-group"><label>Mobile Number *</label><input type="tel" id="p-mobile" placeholder="10-digit mobile number"></div>
       <div class="form-group">
@@ -118,14 +97,14 @@
       </div>
       <div id="emailVerifiedNote" style="display:none;color:var(--green);font-weight:700;font-size:13px;margin:-8px 0 14px">✓ Email verified</div>
       <p style="font-size:12px;color:var(--gray);margin:-8px 0 16px;line-height:1.6">🔒 We verify every application by email — this protects your business address from misuse.</p>
-      <div class="error-msg" id="step2Err"></div>
-      <button class="btn-primary" onclick="submitPersonal()" id="step2Btn">Continue →</button>
-      <button class="btn-secondary" onclick="goStep(1)">← Back</button>
+      <div class="error-msg" id="step1Err"></div>
+      <button class="btn-primary" onclick="submitPersonal()" id="step1Btn">Continue →</button>
+      <a href="index.html" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">← Back to Home</a>
     </div>
   </div>
 
-  <!-- STEP 3: ABOUT YOUR BUSINESS -->
-  <div class="step" id="step3">
+  <!-- STEP 2: ABOUT YOUR BUSINESS -->
+  <div class="step" id="step2">
     <div class="card">
       <h2>About Your Business</h2>
       <p class="sub">What type of business do you have?</p>
@@ -147,14 +126,14 @@
         <div class="form-group" data-f="udyam"><label>Udyam Registration Number</label><input type="text" id="b-udyam" style="text-transform:uppercase"></div>
         <label class="check-row" data-f="no_gst_udyam" style="display:none"><input type="checkbox" id="b-nogst"> I don't have GST/Udyam yet — flag my application for manual verification</label>
       </div>
-      <div class="error-msg" id="step3Err"></div>
-      <button class="btn-primary" onclick="submitBusiness()" id="step3Btn">Continue →</button>
-      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
+      <div class="error-msg" id="step2Err"></div>
+      <button class="btn-primary" onclick="submitBusiness()" id="step2Btn">Continue →</button>
+      <button class="btn-secondary" onclick="goStep(1)">← Back</button>
     </div>
   </div>
 
-  <!-- STEP 4: ADDRESS USAGE -->
-  <div class="step" id="step4">
+  <!-- STEP 3: ADDRESS USAGE -->
+  <div class="step" id="step3">
     <div class="card">
       <h2>How will you use your Virtual Address?</h2>
       <p class="sub">Select all that apply.</p>
@@ -173,27 +152,38 @@
       </div>
       <div class="warn-box">Commercial inventory storage or receiving is not included in the standard Virtual Address plan. If you select "Yes," our team will review your requirement separately before approval.</div>
 
-      <button class="btn-primary" onclick="submitAddress()" id="step4Btn">Continue →</button>
-      <button class="btn-secondary" onclick="goStep(3)">← Back</button>
+      <button class="btn-primary" onclick="submitAddress()" id="step3Btn">Continue →</button>
+      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
     </div>
   </div>
 
-  <!-- STEP 5: PAYMENT -->
-  <div class="step" id="step5">
+  <!-- STEP 4: PAYMENT -->
+  <div class="step" id="step4">
     <div class="card">
-      <h2>Payment Summary</h2>
-      <p class="sub">Virtual Address · <span id="paySummaryDuration">Monthly</span></p>
+      <h2>Choose Your Term &amp; Pay</h2>
+      <p class="sub">Pick Monthly or 12-Months — your total updates instantly, nothing hidden.</p>
+      <div class="radio-cards" id="paymentDurationCards">
+        <div class="radio-card selected" data-duration="month" onclick="switchDuration('month')">
+          <div>Monthly</div>
+          <div id="pd-month" style="font-size:12px;margin-top:4px;color:var(--gray)">Flexible, cancel anytime</div>
+        </div>
+        <div class="radio-card" data-duration="annual" onclick="switchDuration('annual')">
+          <div>12 Months</div>
+          <div id="pd-annual" style="font-size:12px;margin-top:4px;color:var(--gray)">Best value</div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:-8px">Virtual Address · <span id="paySummaryDuration">Monthly</span></p>
       <div id="payRows"></div>
       <div class="price-row price-total"><span>Total Payable Now</span><span id="payTotal">—</span></div>
       <div class="info-box">Payment confirms your application. Your Virtual Address will be activated only after successful verification and approval.</div>
       <p style="font-size:12px;color:var(--gray);text-align:center;margin:-8px 0 16px">🔒 Secured by Razorpay · 256-bit SSL · GST invoice issued instantly after payment</p>
       <button class="btn-primary" onclick="proceedToPayment()" id="payBtn">Proceed to Secure Payment →</button>
-      <button class="btn-secondary" onclick="goStep(4)">← Back</button>
+      <button class="btn-secondary" onclick="goStep(3)">← Back</button>
     </div>
   </div>
 
-  <!-- STEP 6: PAYMENT SUCCESS -->
-  <div class="step" id="step6">
+  <!-- STEP 5: PAYMENT SUCCESS -->
+  <div class="step" id="step5">
     <div class="card" style="text-align:center">
       <div style="font-size:52px;margin-bottom:6px">✓</div>
       <h2 style="color:var(--green)">Payment Successful</h2>
@@ -219,7 +209,7 @@
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-var STEPS = ['Plan','Details','Business','Address','Payment','Done'];
+var STEPS = ['Details','Business','Address','Payment','Done'];
 var appCode = localStorage.getItem('ws4y_app_code') || '';
 var accessToken = localStorage.getItem('ws4y_app_token') || '';
 var duration = 'month';
@@ -267,6 +257,8 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
   var c = cfg.contact || {};
   if(p.virtualAddressMonthly) livePrices.virtualAddressMonthly = parseInt(p.virtualAddressMonthly);
   if(p.virtualAddressAnnual) livePrices.virtualAddressAnnual = parseInt(p.virtualAddressAnnual);
+  if(p.virtualAddressMonthly) document.getElementById('pd-month').textContent = '₹'+livePrices.virtualAddressMonthly.toLocaleString('en-IN')+'/mo · Flexible, cancel anytime';
+  if(p.virtualAddressAnnual) document.getElementById('pd-annual').textContent = '₹'+livePrices.virtualAddressAnnual.toLocaleString('en-IN')+'/mo · Best value';
   if(c.phone){ supportPhone = c.phone; supportPhoneTel = 'tel:'+c.phone.replace(/\s/g,''); document.getElementById('s-phone').textContent = c.phone; document.getElementById('s-phone').href = supportPhoneTel; }
 }).catch(function(){});
 
@@ -324,18 +316,14 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
   }
 })();
 
-// ---- STEP 1 ----
-function selectDuration(d){
-  duration = d;
-  document.querySelectorAll('.radio-card[data-duration]').forEach(function(el){
-    el.classList.toggle('selected', el.dataset.duration === d);
-  });
-}
-
-function startApplication(){
-  var btn = document.getElementById('step1Btn');
-  if(appCode && accessToken){ goStep(2); return; } // already have a draft
-  btn.textContent = 'Starting...'; btn.disabled = true;
+// ---- APPLICATION CREATION (silent, on page load — see init() below) ----
+// There's no more separate "pick a plan" step up front; the draft
+// application is created automatically as soon as the page loads (default
+// duration 'month'), so the customer's very first screen is already the
+// real form. The actual term (Monthly/12-Months) is chosen later, at the
+// Payment step, via switchDuration() below.
+function ensureApplication(){
+  if(appCode && accessToken) return; // already have a draft (resumed)
   fetch('/api/applications/create', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({duration:duration})})
     .then(function(r){return r.json();})
     .then(function(d){
@@ -344,19 +332,38 @@ function startApplication(){
       localStorage.setItem('ws4y_app_code', appCode);
       localStorage.setItem('ws4y_app_token', accessToken);
       track('apply_started', {duration: duration, application_code: appCode});
-      goStep(2);
     })
-    .catch(function(err){ showToast(err.message); })
-    .finally(function(){ btn.textContent = 'Continue →'; btn.disabled = false; });
+    .catch(function(){ showToast('Could not start your application — check your connection and try again.'); });
 }
 
-// ---- STEP 2: PERSONAL + EMAIL VERIFICATION ----
+// Updates the duration toggle's UI + the in-memory `duration` value only —
+// used both by the user clicking a card (switchDuration, which also
+// persists it) and by resumeAt() below (which must NOT re-save a value
+// that's already the server's own record).
+function applyDurationSelection(d){
+  duration = d;
+  document.querySelectorAll('#paymentDurationCards .radio-card').forEach(function(el){
+    el.classList.toggle('selected', el.dataset.duration === d);
+  });
+}
+function switchDuration(d){
+  if(d === duration){ return; }
+  applyDurationSelection(d);
+  renderPaymentSummary();
+  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'duration', data:{duration:d}})})
+    .then(function(r){return r.json();})
+    .then(function(d2){ if(!d2.success) throw new Error(d2.error); })
+    .catch(function(){ showToast('Could not save your plan choice — please try again.'); });
+}
+
+// ---- STEP 1: PERSONAL + EMAIL VERIFICATION ----
 // Mobile OTP is on hold (pending SMS provider DLT approval) — verification
 // currently runs over email via Resend instead. Mobile is still collected.
 var emailVerified = false;
 function sendOtp(){
   var email = document.getElementById('p-email').value.trim();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Enter a valid email address'); return; }
+  if(!appCode || !accessToken){ showToast('Still setting up your application — please wait a moment and try again.'); ensureApplication(); return; }
   var btn = document.getElementById('sendOtpBtn');
   btn.textContent = 'Sending...'; btn.disabled = true;
   fetch('/api/applications/otp-request', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, email:email, purpose:'signup'})})
@@ -390,23 +397,24 @@ function verifyOtp(){
     .finally(function(){ btn.textContent = 'Verify'; btn.disabled = false; });
 }
 function submitPersonal(){
-  var err = document.getElementById('step2Err'); err.style.display='none';
+  var err = document.getElementById('step1Err'); err.style.display='none';
   var name = document.getElementById('p-name').value.trim();
   var mobile = document.getElementById('p-mobile').value.trim();
   var email = document.getElementById('p-email').value.trim();
+  if(!appCode || !accessToken){ err.textContent='Still setting up your application — please wait a moment and try again.'; err.style.display='block'; ensureApplication(); return; }
   if(!name){ err.textContent='Please enter your full name'; err.style.display='block'; return; }
   if(mobile.replace(/\D/g,'').length < 10){ err.textContent='Please enter a valid 10-digit mobile number'; err.style.display='block'; return; }
   if(!emailVerified){ err.textContent='Please verify your email address'; err.style.display='block'; return; }
-  var btn = document.getElementById('step2Btn');
+  var btn = document.getElementById('step1Btn');
   btn.textContent='Saving...'; btn.disabled=true;
   fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'personal', data:{fullName:name, mobile:mobile, email:email}})})
     .then(function(r){return r.json();})
-    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(3); })
+    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(2); })
     .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
     .finally(function(){ btn.textContent='Continue →'; btn.disabled=false; });
 }
 
-// ---- STEP 3: BUSINESS ----
+// ---- STEP 2: BUSINESS ----
 var BIZ_FIELD_MAP = {
   'Proprietorship':          ['business_name','business_activity','pan','gstin','udyam','no_gst_udyam'],
   'Private Limited Company': ['business_name','pan','cin','gstin'],
@@ -426,7 +434,7 @@ function selectBizType(t){
   document.getElementById('bizFields').style.display = 'block';
 }
 function submitBusiness(){
-  var err = document.getElementById('step3Err'); err.style.display='none';
+  var err = document.getElementById('step2Err'); err.style.display='none';
   if(!bizType){ err.textContent='Please select a business type'; err.style.display='block'; return; }
   var name = document.getElementById('b-name').value.trim();
   if(!name){ err.textContent='Please enter your business name'; err.style.display='block'; return; }
@@ -444,16 +452,16 @@ function submitBusiness(){
     llpin: document.getElementById('b-llpin').value.trim(),
     noGstUdyam: document.getElementById('b-nogst').checked
   };
-  var btn = document.getElementById('step3Btn');
+  var btn = document.getElementById('step2Btn');
   btn.textContent='Saving...'; btn.disabled=true;
   fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'business', data:data})})
     .then(function(r){return r.json();})
-    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(4); })
+    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(3); })
     .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
     .finally(function(){ btn.textContent='Continue →'; btn.disabled=false; });
 }
 
-// ---- STEP 4: ADDRESS USAGE ----
+// ---- STEP 3: ADDRESS USAGE ----
 function selectInventory(yes){
   inventoryRequested = yes;
   document.querySelectorAll('.radio-card[data-inv]').forEach(function(el){
@@ -462,16 +470,16 @@ function selectInventory(yes){
 }
 function submitAddress(){
   var uses = Array.prototype.map.call(document.querySelectorAll('.au-check:checked'), function(el){ return el.value; });
-  var btn = document.getElementById('step4Btn');
+  var btn = document.getElementById('step3Btn');
   btn.textContent='Saving...'; btn.disabled=true;
   fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'address', data:{addressUsage:uses, inventoryRequested: !!inventoryRequested}})})
     .then(function(r){return r.json();})
-    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); renderPaymentSummary(); goStep(5); })
+    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); renderPaymentSummary(); goStep(4); })
     .catch(function(e){ showToast(e.message); })
     .finally(function(){ btn.textContent='Continue →'; btn.disabled=false; });
 }
 
-// ---- STEP 5: PAYMENT ----
+// ---- STEP 4: PAYMENT ----
 function renderPaymentSummary(){
   document.getElementById('paySummaryDuration').textContent = duration === 'annual' ? '12-Month Plan' : 'Month-to-month';
   var rate = duration === 'annual' ? livePrices.virtualAddressAnnual : livePrices.virtualAddressMonthly;
@@ -515,7 +523,7 @@ function proceedToPayment(){
             document.getElementById('s-payid').textContent = v.paymentId;
             document.getElementById('s-amount').textContent = '₹'+parseInt(v.amount).toLocaleString('en-IN');
             track('apply_payment_success', {application_code: v.applicationCode, transaction_id: v.paymentId, value: parseInt(v.amount), currency: 'INR'});
-            goStep(6);
+            goStep(5);
           })
           .catch(function(err){ track('apply_payment_verify_failed', {application_code: appCode}); showToast('Payment verification failed: '+err.message+'. Please contact us before retrying.'); });
         },
@@ -535,24 +543,24 @@ function proceedToPayment(){
 
   function resumeAt(track){
     var a = track.application;
-    if(a.duration) { duration = a.duration; selectDuration(duration); }
+    if(a.duration) applyDurationSelection(a.duration);
     if(a.paymentStatus === 'paid'){
       document.getElementById('s-code').textContent = a.code;
       document.getElementById('s-payid').textContent = a.razorpayPaymentId || '—';
       document.getElementById('s-amount').textContent = a.paymentAmount ? ('₹'+parseInt(a.paymentAmount).toLocaleString('en-IN')) : '—';
-      goStep(6);
+      goStep(5);
     } else if(a.businessType && a.addressUsage && a.addressUsage.length){
-      renderPaymentSummary(); goStep(5);
+      renderPaymentSummary(); goStep(4);
     } else if(a.businessType){
-      selectBizType(a.businessType); goStep(4);
+      selectBizType(a.businessType); goStep(3);
     } else if(a.emailVerified && a.fullName){
-      goStep(3);
+      goStep(2);
     } else {
       if(a.fullName) document.getElementById('p-name').value = a.fullName;
       if(a.email) document.getElementById('p-email').value = a.email;
       if(a.mobile) document.getElementById('p-mobile').value = a.mobile.replace(/^91/, '');
       if(a.emailVerified){ emailVerified = true; document.getElementById('emailVerifiedNote').style.display = 'block'; }
-      goStep(2);
+      goStep(1);
     }
   }
 
@@ -577,6 +585,7 @@ function proceedToPayment(){
   } else if(appCode && accessToken){
     loadTrack();
   } else {
+    ensureApplication();
     goStep(1);
   }
 })();

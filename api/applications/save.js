@@ -110,6 +110,11 @@ module.exports = async function handler(req, res) {
       `;
       await logEvent(app.id, 'customer', 'Business details saved (' + businessType + ')');
 
+    } else if (step === 'duration') {
+      const dur = d.duration === 'annual' ? 'annual' : 'month';
+      await sql`UPDATE applications SET duration = ${dur}, updated_at = now() WHERE id = ${app.id}`;
+      await logEvent(app.id, 'customer', 'Plan term changed to ' + dur);
+
     } else if (step === 'address') {
       const uses = Array.isArray(d.addressUsage) ? d.addressUsage.filter(function (u) { return ADDRESS_USES.indexOf(u) !== -1; }) : [];
       const inventoryRequested = !!d.inventoryRequested;
