@@ -782,14 +782,21 @@ function exportVaCSV(){
 // BEFORE submitPersonal() is even callable), since each row's "Step
 // Conversion" and "Median Time on Step" are computed against the row
 // immediately above it.
+// Order matches the CURRENT wizard exactly: Details(1) -> Business &
+// Address(2, merged) -> Payment(3, email verification now happens here,
+// last, right before paying) -> Done(4). This has changed twice now as
+// the wizard was restructured -- re-check it against apply.html's real
+// step order (not just relabel) any time steps move again, since the
+// duration/conversion math below is computed relative to whichever
+// milestone comes immediately before each one in this array.
 var VA_MILESTONES = [
   {key:'created',  label:'Application Started',    match:function(e){return e.indexOf('Application created')===0;}},
-  {key:'verified', label:'1 · Email Verified',      match:function(e){return e==='Email address verified';}},
   {key:'personal', label:'1 · Details Saved',       match:function(e){return e.indexOf('Personal details saved')===0;}},
   {key:'business', label:'2 · Business Saved',      match:function(e){return e.indexOf('Business details saved')===0;}},
-  {key:'address',  label:'3 · Address Saved',       match:function(e){return e.indexOf('Address usage saved')===0;}},
-  {key:'paystart', label:'4 · Payment Opened',      match:function(e){return e.indexOf('Razorpay order created')===0;}},
-  {key:'paydone',  label:'4 · Payment Completed',   match:function(e){return e.indexOf('Payment verified')===0;}}
+  {key:'address',  label:'2 · Address Saved',       match:function(e){return e.indexOf('Address usage saved')===0;}},
+  {key:'verified', label:'3 · Email Verified',      match:function(e){return e==='Email address verified';}},
+  {key:'paystart', label:'3 · Payment Opened',      match:function(e){return e.indexOf('Razorpay order created')===0;}},
+  {key:'paydone',  label:'3 · Payment Completed',   match:function(e){return e.indexOf('Payment verified')===0;}}
 ];
 
 function msToHuman(ms){

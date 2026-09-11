@@ -72,6 +72,9 @@
   </aside>
 
 <div class="wrap">
+  <div class="urgency-banner" id="urgencyBanner" style="display:none">
+    ⚡ Finish now and save <strong>₹250</strong> — offer ends in <span id="urgencyTimer">10:00</span>
+  </div>
   <div class="progress-track" id="progressTrack"></div>
 
   <!-- STEP 1: PERSONAL INFORMATION -->
@@ -87,7 +90,7 @@
     </div>
   </div>
 
-  <!-- STEP 2: ABOUT YOUR BUSINESS -->
+  <!-- STEP 2: BUSINESS + ADDRESS USAGE (merged, was two steps) -->
   <div class="step" id="step2">
     <div class="card">
       <h2>About Your Business</h2>
@@ -110,39 +113,34 @@
         <div class="form-group" data-f="udyam"><label>Udyam Registration Number</label><input type="text" id="b-udyam" style="text-transform:uppercase"></div>
         <label class="check-row" data-f="no_gst_udyam" style="display:none"><input type="checkbox" id="b-nogst"> I don't have GST/Udyam yet — flag my application for manual verification</label>
       </div>
+
+      <div style="margin-top:22px;padding-top:18px;border-top:1px solid #F3F4F6">
+        <h2 style="font-size:17px">How will you use your Virtual Address?</h2>
+        <p class="sub">Select all that apply.</p>
+        <label class="check-row"><input type="checkbox" class="au-check" value="GST Registration"> GST Registration</label>
+        <label class="check-row"><input type="checkbox" class="au-check" value="Company / LLP Registration"> Company / LLP Registration</label>
+        <label class="check-row"><input type="checkbox" class="au-check" value="Business Correspondence"> Business Correspondence</label>
+        <label class="check-row"><input type="checkbox" class="au-check" value="Website & Invoices"> Website &amp; Invoices</label>
+        <label class="check-row"><input type="checkbox" class="au-check" value="Receiving Letters & Documents"> Receiving Letters &amp; Documents</label>
+
+        <div style="margin-top:20px">
+          <label style="display:block;font-size:14px;font-weight:700;margin-bottom:10px">Will you receive commercial goods or inventory at this address?</label>
+          <div class="radio-cards">
+            <div class="radio-card" data-inv="no" onclick="selectInventory(false)">No</div>
+            <div class="radio-card" data-inv="yes" onclick="selectInventory(true)">Yes</div>
+          </div>
+        </div>
+        <div class="warn-box">Commercial inventory storage or receiving is not included in the standard Virtual Address plan. If you select "Yes," our team will review your requirement separately before approval.</div>
+      </div>
+
       <div class="error-msg" id="step2Err"></div>
-      <button class="btn-primary" onclick="submitBusiness()" id="step2Btn">Continue →</button>
+      <button class="btn-primary" onclick="submitBusinessAndAddress()" id="step2Btn">Continue →</button>
       <button class="btn-secondary" onclick="goStep(1)">← Back</button>
     </div>
   </div>
 
-  <!-- STEP 3: ADDRESS USAGE -->
+  <!-- STEP 3: PAYMENT -->
   <div class="step" id="step3">
-    <div class="card">
-      <h2>How will you use your Virtual Address?</h2>
-      <p class="sub">Select all that apply.</p>
-      <label class="check-row"><input type="checkbox" class="au-check" value="GST Registration"> GST Registration</label>
-      <label class="check-row"><input type="checkbox" class="au-check" value="Company / LLP Registration"> Company / LLP Registration</label>
-      <label class="check-row"><input type="checkbox" class="au-check" value="Business Correspondence"> Business Correspondence</label>
-      <label class="check-row"><input type="checkbox" class="au-check" value="Website & Invoices"> Website &amp; Invoices</label>
-      <label class="check-row"><input type="checkbox" class="au-check" value="Receiving Letters & Documents"> Receiving Letters &amp; Documents</label>
-
-      <div style="margin-top:20px">
-        <label style="display:block;font-size:14px;font-weight:700;margin-bottom:10px">Will you receive commercial goods or inventory at this address?</label>
-        <div class="radio-cards">
-          <div class="radio-card" data-inv="no" onclick="selectInventory(false)">No</div>
-          <div class="radio-card" data-inv="yes" onclick="selectInventory(true)">Yes</div>
-        </div>
-      </div>
-      <div class="warn-box">Commercial inventory storage or receiving is not included in the standard Virtual Address plan. If you select "Yes," our team will review your requirement separately before approval.</div>
-
-      <button class="btn-primary" onclick="submitAddress()" id="step3Btn">Continue →</button>
-      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
-    </div>
-  </div>
-
-  <!-- STEP 4: PAYMENT -->
-  <div class="step" id="step4">
     <div class="card">
       <h2>Choose Your Term &amp; Pay</h2>
 
@@ -188,17 +186,18 @@
         </div>
         <p class="sub" style="margin-top:-8px">Virtual Address · <span id="paySummaryDuration">Monthly</span></p>
         <div id="payRows"></div>
+        <div class="price-row" id="discountRow" style="display:none;color:var(--green);font-weight:700"><span>🎉 Fast-Fill Discount</span><span id="discountAmount">−₹250</span></div>
         <div class="price-row price-total"><span>Total Payable Now</span><span id="payTotal">—</span></div>
         <div class="info-box">Payment confirms your application. Your Virtual Address will be activated only after successful verification and approval.</div>
         <p style="font-size:12px;color:var(--gray);text-align:center;margin:-8px 0 16px">🔒 Secured by Razorpay · 256-bit SSL · GST invoice issued instantly after payment</p>
         <button class="btn-primary" onclick="proceedToPayment()" id="payBtn">Proceed to Secure Payment →</button>
       </div>
-      <button class="btn-secondary" onclick="goStep(3)">← Back</button>
+      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
     </div>
   </div>
 
-  <!-- STEP 5: PAYMENT SUCCESS -->
-  <div class="step" id="step5">
+  <!-- STEP 4: PAYMENT SUCCESS -->
+  <div class="step" id="step4">
     <div class="card" style="text-align:center">
       <div style="font-size:52px;margin-bottom:6px">✓</div>
       <h2 style="color:var(--green)">Payment Successful</h2>
@@ -224,7 +223,7 @@
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-var STEPS = ['Details','Business','Address','Payment','Done'];
+var STEPS = ['Details','Business & Address','Payment','Done'];
 var appCode = localStorage.getItem('ws4y_app_code') || '';
 var accessToken = localStorage.getItem('ws4y_app_token') || '';
 // True only once appCode/accessToken are CONFIRMED valid — either a
@@ -241,6 +240,42 @@ var bizType = '';
 var inventoryRequested = null;
 var supportPhone = '+91 77180 86678';
 var supportPhoneTel = '+917718086678';
+
+// ---- FAST-FILL DISCOUNT COUNTDOWN ----
+// ₹250 off if the application reaches payment within 10 minutes of
+// being created. api/applications/pay.js is the real source of truth —
+// it computes eligibility itself from the application's own created_at
+// timestamp, never from anything the client sends — this is purely the
+// visible countdown + preview.
+var FAST_FILL_WINDOW_MS = 10 * 60 * 1000;
+var offerDeadline = 0; // epoch ms; 0 = not yet known
+var offerTimerHandle = null;
+function startOfferCountdown(createdAtMs){
+  offerDeadline = createdAtMs + FAST_FILL_WINDOW_MS;
+  if(offerTimerHandle) clearInterval(offerTimerHandle);
+  tickOfferCountdown();
+  offerTimerHandle = setInterval(tickOfferCountdown, 1000);
+}
+function fastFillEligible(){
+  return offerDeadline > 0 && Date.now() < offerDeadline;
+}
+function tickOfferCountdown(){
+  var banner = document.getElementById('urgencyBanner');
+  if(!fastFillEligible()){
+    banner.style.display = 'none';
+    if(offerTimerHandle){ clearInterval(offerTimerHandle); offerTimerHandle = null; }
+    // The price preview needs to drop the discount line the instant the
+    // clock runs out too, not just stay showing a total that's about to
+    // be wrong the moment they hit Pay.
+    if(document.getElementById('step3').classList.contains('active')) renderPaymentSummary();
+    return;
+  }
+  banner.style.display = 'flex';
+  var msLeft = offerDeadline - Date.now();
+  var totalSec = Math.max(0, Math.ceil(msLeft / 1000));
+  var m = Math.floor(totalSec / 60), s = totalSec % 60;
+  document.getElementById('urgencyTimer').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+}
 
 function renderProgress(activeIdx){
   var el = document.getElementById('progressTrack');
@@ -363,6 +398,7 @@ function ensureApplication(){
       localStorage.setItem('ws4y_app_code', appCode);
       localStorage.setItem('ws4y_app_token', accessToken);
       sessionReady = true;
+      startOfferCountdown(Date.now());
       track('apply_started', {duration: duration, application_code: appCode});
     })
     .catch(function(){ showToast('Could not start your application — check your connection and try again.'); })
@@ -535,7 +571,17 @@ function selectBizType(t){
   });
   document.getElementById('bizFields').style.display = 'block';
 }
-function submitBusiness(){
+function selectInventory(yes){
+  inventoryRequested = yes;
+  document.querySelectorAll('.radio-card[data-inv]').forEach(function(el){
+    el.classList.toggle('selected', (el.dataset.inv === 'yes') === yes);
+  });
+}
+// Business + address usage are one step now (were two) — save.js still
+// takes them as two separate step calls, so this just chains them
+// before advancing, instead of the customer having to click Continue
+// twice.
+function submitBusinessAndAddress(){
   var err = document.getElementById('step2Err'); err.style.display='none';
   if(!bizType){ err.textContent='Please select a business type'; err.style.display='block'; return; }
   var name = document.getElementById('b-name').value.trim();
@@ -543,7 +589,7 @@ function submitBusiness(){
   var pan = document.getElementById('b-pan').value.trim();
   if(!pan){ err.textContent='Please enter your PAN'; err.style.display='block'; return; }
 
-  var data = {
+  var bizData = {
     businessType: bizType,
     businessName: name,
     businessActivity: document.getElementById('b-activity').value.trim(),
@@ -554,40 +600,31 @@ function submitBusiness(){
     llpin: document.getElementById('b-llpin').value.trim(),
     noGstUdyam: document.getElementById('b-nogst').checked
   };
+  var uses = Array.prototype.map.call(document.querySelectorAll('.au-check:checked'), function(el){ return el.value; });
+  var addressData = { addressUsage: uses, inventoryRequested: !!inventoryRequested };
+
   var btn = document.getElementById('step2Btn');
   btn.textContent='Saving...'; btn.disabled=true;
-  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'business', data:data})})
+  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'business', data:bizData})})
     .then(function(r){return r.json();})
-    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(3); })
+    .then(function(d){
+      if(!d.success) throw new Error(d.error||'Could not save');
+      return fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'address', data:addressData})});
+    })
+    .then(function(r){return r.json();})
+    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(3); enterPaymentStep(); })
     .catch(function(e){ err.textContent=e.message; err.style.display='block'; })
     .finally(function(){ btn.textContent='Continue →'; btn.disabled=false; });
 }
 
-// ---- STEP 3: ADDRESS USAGE ----
-function selectInventory(yes){
-  inventoryRequested = yes;
-  document.querySelectorAll('.radio-card[data-inv]').forEach(function(el){
-    el.classList.toggle('selected', (el.dataset.inv === 'yes') === yes);
-  });
-}
-function submitAddress(){
-  var uses = Array.prototype.map.call(document.querySelectorAll('.au-check:checked'), function(el){ return el.value; });
-  var btn = document.getElementById('step3Btn');
-  btn.textContent='Saving...'; btn.disabled=true;
-  fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'address', data:{addressUsage:uses, inventoryRequested: !!inventoryRequested}})})
-    .then(function(r){return r.json();})
-    .then(function(d){ if(!d.success) throw new Error(d.error||'Could not save'); goStep(4); enterPaymentStep(); })
-    .catch(function(e){ showToast(e.message); })
-    .finally(function(){ btn.textContent='Continue →'; btn.disabled=false; });
-}
-
-// ---- STEP 4: PAYMENT ----
+// ---- STEP 3: PAYMENT ----
 // Mirrors api/_pricing.js's VA_TERM_MONTHS/computeTotal exactly, for
 // display only — the server (api/applications/pay.js) always computes
 // the actual charged amount itself from the application's stored
 // duration, never from anything this preview sends.
 var VA_TERM_LABELS = { month: 'Month-to-month', annual: '12-Month Plan', '24month': '24-Month Plan', '36month': '36-Month Plan' };
 var VA_TERM_MONTHS = { month: 1, annual: 12, '24month': 24, '36month': 36 };
+var FAST_FILL_DISCOUNT = 250; // must match api/applications/pay.js — that's the real, server-enforced amount
 function renderPaymentSummary(){
   document.getElementById('paySummaryDuration').textContent = VA_TERM_LABELS[duration] || 'Month-to-month';
   var months = VA_TERM_MONTHS[duration] || 1;
@@ -600,6 +637,15 @@ function renderPaymentSummary(){
     '<div class="price-row"><span>Deposit (1 month, refundable)</span><span>'+money(rate)+'</span></div>'+
     '<div class="price-row"><span>'+advanceLabel+'</span><span>'+money(months*rate)+'</span></div>'+
     '<div class="price-row"><span>GST 18%</span><span>'+money(gst)+'</span></div>';
+  var discountRow = document.getElementById('discountRow');
+  if(fastFillEligible()){
+    discountRow.style.display = 'flex';
+    var discount = Math.min(FAST_FILL_DISCOUNT, total);
+    document.getElementById('discountAmount').textContent = '−'+money(discount);
+    total = total - discount;
+  } else {
+    discountRow.style.display = 'none';
+  }
   document.getElementById('payTotal').textContent = money(total);
 }
 function money(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
@@ -634,7 +680,7 @@ function proceedToPayment(){
             document.getElementById('s-payid').textContent = v.paymentId;
             document.getElementById('s-amount').textContent = '₹'+parseInt(v.amount).toLocaleString('en-IN');
             track('apply_payment_success', {application_code: v.applicationCode, transaction_id: v.paymentId, value: parseInt(v.amount), currency: 'INR'});
-            goStep(5);
+            goStep(4);
           })
           .catch(function(err){ track('apply_payment_verify_failed', {application_code: appCode}); showToast('Payment verification failed: '+err.message+'. Please contact us before retrying.'); });
         },
@@ -655,6 +701,7 @@ function proceedToPayment(){
   function resumeAt(track){
     var a = track.application;
     sessionReady = true; // reaching here means loadTrack()'s fetch succeeded — this appCode/accessToken are confirmed good
+    if(a.createdAt) startOfferCountdown(new Date(a.createdAt).getTime());
     if(a.duration) applyDurationSelection(a.duration);
     if(a.fullName) document.getElementById('p-name').value = a.fullName;
     if(a.email) document.getElementById('p-email').value = a.email;
@@ -666,16 +713,20 @@ function proceedToPayment(){
     emailVerified = !!a.emailVerified;
     lastVerifiedEmail = a.emailVerified ? (a.email || '') : '';
 
+    // Business and address usage are one step now — "reached Payment"
+    // requires both to be saved, not just business type (there's no
+    // longer an intermediate step where one is done and the other
+    // isn't reachable yet; if business is set but address usage isn't,
+    // they're still mid-way through the very same step2 form).
     if(a.paymentStatus === 'paid'){
       document.getElementById('s-code').textContent = a.code;
       document.getElementById('s-payid').textContent = a.razorpayPaymentId || '—';
       document.getElementById('s-amount').textContent = a.paymentAmount ? ('₹'+parseInt(a.paymentAmount).toLocaleString('en-IN')) : '—';
-      goStep(5);
+      goStep(4);
     } else if(a.businessType && a.addressUsage && a.addressUsage.length){
-      goStep(4); enterPaymentStep();
-    } else if(a.businessType){
-      selectBizType(a.businessType); goStep(3);
+      goStep(3); enterPaymentStep();
     } else if(a.fullName){
+      if(a.businessType) selectBizType(a.businessType);
       goStep(2);
     } else {
       goStep(1);

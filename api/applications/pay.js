@@ -17,6 +17,14 @@ const { setCorsHeaders } = require('../_cors');
 const RAZORPAY_KEY_ID     = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
+// Fast-fill discount: flat ₹250 off if payment is reached within 10
+// minutes of the application being created. Eligibility is computed
+// here from the application's own created_at, on the server, the same
+// way the amount itself is — never trusted from the client, which only
+// shows a matching countdown/preview for the customer's benefit.
+const FAST_FILL_WINDOW_MS = 10 * 60 * 1000;
+const FAST_FILL_DISCOUNT = 250;
+
 module.exports = async function handler(req, res) {
   setCorsHeaders(req, res, { allowAuthHeader: true });
 
@@ -40,10 +48,15 @@ module.exports = async function handler(req, res) {
     }
 
     const config = await readConfig();
-    const amount = computeTotal('Virtual Address', { duration: app.duration }, config.prices);
-    if (amount === null) {
+    const baseAmount = computeTotal('Virtual Address', { duration: app.duration }, config.prices);
+    if (baseAmount === null) {
       return res.status(400).json({ error: 'Could not calculate the payable amount' });
     }
+
+    const elapsedMs = Date.now() - new Date(app.created_at).getTime();
+    const fastFillApplied = elapsedMs <= FAST_FILL_WINDOW_MS;
+    const discount = fastFillApplied ? Math.min(FAST_FILL_DISCOUNT, baseAmount) : 0;
+    const amount = baseAmount - discount;
     const amountPaise = Math.round(amount * 100);
 
     const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64');
@@ -61,7 +74,8 @@ module.exports = async function handler(req, res) {
           customer_name: app.full_name,
           customer_email: app.email || '',
           customer_phone: app.mobile,
-          plan: 'Virtual Address (' + (app.duration === 'annual' ? 'Annual' : 'Month-to-month') + ')'
+          plan: 'Virtual Address (' + (app.duration === 'annual' ? 'Annual' : 'Month-to-month') + ')',
+          fast_fill_discount: fastFillApplied ? discount : 0
         }
       })
     });
@@ -79,7 +93,7 @@ module.exports = async function handler(req, res) {
         updated_at = now()
       WHERE id = ${app.id}
     `;
-    await logEvent(app.id, 'system', 'Razorpay order created for ₹' + amount);
+    await logEvent(app.id, 'system', 'Razorpay order created for ₹' + amount + (fastFillApplied ? ' (₹' + discount + ' fast-fill discount applied)' : ''));
 
     return res.status(200).json({
       success: true,
@@ -87,7 +101,9 @@ module.exports = async function handler(req, res) {
       amount: amount,
       amountPaise: amountPaise,
       currency: 'INR',
-      keyId: RAZORPAY_KEY_ID
+      keyId: RAZORPAY_KEY_ID,
+      fastFillApplied: fastFillApplied,
+      discount: discount
     });
   } catch (err) {
     console.error('applications/pay error:', err);
