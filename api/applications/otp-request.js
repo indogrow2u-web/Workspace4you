@@ -36,8 +36,20 @@ module.exports = async function handler(req, res) {
       app = await requireOwnedApplication(req, res, code);
       if (!app) return; // response already sent
       // Store the candidate address now — it only becomes "verified" once
-      // otp-verify succeeds.
-      await sql`UPDATE applications SET email = ${normalized}, updated_at = now() WHERE id = ${app.id}`;
+      // otp-verify succeeds. If this differs from whatever was already on
+      // file, any prior verification no longer applies to it — without
+      // this, a customer could verify email A, then edit the field to
+      // email B (now that email lives at the Payment step and can be
+      // re-edited there without leaving it) and still pass pay.js's
+      // email_verified_at gate despite B never actually being confirmed.
+      const emailChanged = (app.email || '').toLowerCase() !== normalized;
+      await sql`
+        UPDATE applications SET
+          email = ${normalized},
+          email_verified_at = CASE WHEN ${emailChanged} THEN NULL ELSE email_verified_at END,
+          updated_at = now()
+        WHERE id = ${app.id}
+      `;
 
     } else if (purpose === 'track') {
       app = await getApplicationByCode(code);

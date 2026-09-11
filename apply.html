@@ -151,7 +151,7 @@
         <div class="form-group">
           <label>Email Address *</label>
           <div style="display:flex;gap:8px">
-            <input type="email" id="p-email" placeholder="your@email.com" style="flex:1">
+            <input type="email" id="p-email" placeholder="your@email.com" style="flex:1" oninput="onEmailFieldChanged()">
             <button class="btn-secondary" style="width:auto;margin:0;padding:0 18px;white-space:nowrap" id="sendOtpBtn" onclick="sendOtp()">Send Code</button>
           </div>
         </div>
@@ -351,8 +351,10 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
 // duration 'month'), so the customer's very first screen is already the
 // real form. The actual term (Monthly/12-Months) is chosen later, at the
 // Payment step, via switchDuration() below.
+var sessionPending = false; // a create/resume request is currently in flight
 function ensureApplication(){
-  if(sessionReady) return; // already confirmed good
+  if(sessionReady || sessionPending) return; // already good, or already trying
+  sessionPending = true;
   fetch('/api/applications/create', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({duration:duration})})
     .then(function(r){return r.json();})
     .then(function(d){
@@ -363,7 +365,8 @@ function ensureApplication(){
       sessionReady = true;
       track('apply_started', {duration: duration, application_code: appCode});
     })
-    .catch(function(){ showToast('Could not start your application — check your connection and try again.'); });
+    .catch(function(){ showToast('Could not start your application — check your connection and try again.'); })
+    .finally(function(){ sessionPending = false; });
 }
 
 // Updates the duration toggle's UI + the in-memory `duration` value only —
@@ -378,12 +381,23 @@ function applyDurationSelection(d){
 }
 function switchDuration(d){
   if(d === duration){ return; }
+  var previous = duration;
   applyDurationSelection(d);
   renderPaymentSummary();
   fetch('/api/applications/save', {method:'POST', headers:authHeaders(), body:JSON.stringify({code:appCode, step:'duration', data:{duration:d}})})
     .then(function(r){return r.json();})
     .then(function(d2){ if(!d2.success) throw new Error(d2.error); })
-    .catch(function(){ showToast('Could not save your plan choice — please try again.'); });
+    .catch(function(){
+      // pay.js always charges whatever's actually saved server-side, so
+      // leaving the display on the un-saved choice would show a total
+      // that's quietly wrong until it self-corrects the moment they hit
+      // Pay -- a price jump right as someone's about to pay is exactly
+      // the kind of thing this whole page exists to avoid. Roll the
+      // display back to the last term that's confirmed saved instead.
+      applyDurationSelection(previous);
+      renderPaymentSummary();
+      showToast('Could not save your plan choice — please try again.');
+    });
 }
 
 // ---- STEP 1: PERSONAL INFO ----
@@ -398,10 +412,19 @@ var lastVerifiedEmail = ''; // if p-email changes after this, re-verification is
 // it genuinely never resolves (dead network etc.) it gives up after ~2.5s
 // and asks for a manual retry, at which point the earlier attempt has
 // almost always already finished anyway.
-function waitForSession(cb, attemptsLeft){
+function waitForSession(cb, attemptsLeft, alreadyRetried){
   if(sessionReady){ cb(); return; }
+  // Whatever was supposed to establish the session (a fresh create, or
+  // resuming an old one) may have already finished and failed rather
+  // than still being slow — sessionPending tells the two apart. If
+  // nothing is actually running any more, kick off exactly one retry
+  // (not one per poll tick — ensureApplication()'s own fetch typically
+  // resolves well under 400ms, so retrying on every tick here would
+  // fire a fresh create request every 400ms for the whole wait window
+  // instead of giving one retry a real chance to land).
+  if(!sessionPending && !alreadyRetried){ ensureApplication(); alreadyRetried = true; }
   if(attemptsLeft <= 0){ showToast('Still setting up your application — please tap Continue again in a moment.'); return; }
-  setTimeout(function(){ waitForSession(cb, attemptsLeft - 1); }, 400);
+  setTimeout(function(){ waitForSession(cb, attemptsLeft - 1, alreadyRetried); }, 400);
 }
 
 function submitPersonal(){
@@ -439,6 +462,21 @@ function enterPaymentStep(){
   if(email !== lastVerifiedEmail) emailVerified = false;
   updatePayVerifyUI();
   renderPaymentSummary();
+}
+// Since email lives at Step 4 and can be re-edited without leaving it,
+// the UI has to notice immediately if someone edits it after verifying
+// — otherwise it would keep showing "✓ Email verified" / the unlocked
+// Pay button for an address that's no longer the one actually
+// confirmed (otp-request.js resets the real email_verified_at on the
+// server the moment a changed email is next sent a code, but the UI
+// shouldn't lag behind that by a full round trip).
+function onEmailFieldChanged(){
+  var email = document.getElementById('p-email').value.trim();
+  if(email !== lastVerifiedEmail && emailVerified){
+    emailVerified = false;
+    document.getElementById('otpGroup').style.display = 'none';
+    updatePayVerifyUI();
+  }
 }
 function sendOtp(){
   var email = document.getElementById('p-email').value.trim();
@@ -658,23 +696,31 @@ function proceedToPayment(){
     goStep(1);
   }
   function loadTrack(){
+    sessionPending = true;
     fetch('/api/applications/track?code='+encodeURIComponent(appCode), {headers:authHeaders()})
       .then(function(r){return r.json();})
-      .then(function(d){ if(d.success) resumeAt(d); else startFresh(); })
-      .catch(function(){ startFresh(); });
+      // Clear the flag before resumeAt()/startFresh() run, not after —
+      // startFresh() calls ensureApplication() synchronously inside this
+      // callback, and it needs to see sessionPending already false to
+      // start its own fresh attempt instead of thinking one's still
+      // running (this exact one, which is about to be moot either way).
+      .then(function(d){ sessionPending = false; if(d.success) resumeAt(d); else startFresh(); })
+      .catch(function(){ sessionPending = false; startFresh(); });
   }
 
   if(resumeToken){
+    sessionPending = true;
     fetch('/api/applications/resume?token='+encodeURIComponent(resumeToken))
       .then(function(r){return r.json();})
       .then(function(d){
-        if(!d.success) { showToast(d.error||'This link is no longer valid'); startFresh(); return; }
+        if(!d.success) { sessionPending = false; showToast(d.error||'This link is no longer valid'); startFresh(); return; }
         appCode = d.code; accessToken = d.accessToken;
         localStorage.setItem('ws4y_app_code', appCode);
         localStorage.setItem('ws4y_app_token', accessToken);
+        sessionPending = false;
         loadTrack();
       })
-      .catch(function(){ startFresh(); });
+      .catch(function(){ sessionPending = false; startFresh(); });
   } else if(appCode && accessToken){
     loadTrack();
   } else {
