@@ -251,6 +251,7 @@ tr:hover td{background:#FAFBFF}
             <button class="filter-btn" onclick="setVaFilter('active',this)">Active</button>
             <button class="filter-btn" onclick="setVaFilter('rejected',this)">Rejected</button>
           </div>
+          <button class="export-btn" onclick="exportVaCSV()">Export CSV</button>
           <button class="refresh-btn" onclick="loadVaApplications()">Refresh</button>
         </div>
       </div>
@@ -691,13 +692,38 @@ function setVaFilter(f,btn){
   renderVaTable();
 }
 
-function renderVaTable(){
+function getVaFiltered(){
   var q = document.getElementById('va-searchBox').value.toLowerCase();
-  var filtered = allVaApps.filter(function(a){
+  return allVaApps.filter(function(a){
     var mf = currentVaFilter==='all' || a.status===currentVaFilter;
     var ms = !q || [a.application_code,a.full_name,a.business_name,a.mobile,a.gstin,a.cin,a.llpin].some(function(v){return (v||'').toLowerCase().includes(q);});
     return mf && ms;
   });
+}
+
+function exportVaCSV(){
+  var rows = getVaFiltered();
+  if(!rows.length){ showToast('No applications to export'); return; }
+  var cols = ['application_code','status','payment_status','payment_amount','full_name','mobile','email',
+    'business_type','business_name','gstin','cin','llpin','plan_name','duration','inventory_requested',
+    'verification_status','admin_review_status','agreement_status','activation_status','created_at','updated_at'];
+  var csvCell = function(v){
+    if(v===null||v===undefined) return '';
+    var s = String(v).replace(/"/g,'""');
+    return /[",\n]/.test(s) ? '"'+s+'"' : s;
+  };
+  var csv = [cols.join(',')].concat(rows.map(function(a){
+    return cols.map(function(c){ return csvCell(a[c]); }).join(',');
+  })).join('\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'ws4y_applications_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('Exported '+rows.length+' application(s)');
+}
+
+function renderVaTable(){
+  var filtered = getVaFiltered();
   var tbody = document.getElementById('va-body');
   if(filtered.length===0){ tbody.innerHTML='<tr><td colspan="8" class="no-data">No applications found</td></tr>'; return; }
   tbody.innerHTML = filtered.map(function(a){

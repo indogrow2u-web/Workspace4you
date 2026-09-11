@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Apply for Virtual Address | Workspace4you</title>
 <meta name="robots" content="noindex">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-7QFXF1SP3W"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-7QFXF1SP3W');</script>
 <link rel="icon" type="image/png" href="logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/ws4y-shared.css">
@@ -75,19 +77,19 @@
   <!-- STEP 1: SELECT PLAN -->
   <div class="step active" id="step1">
     <div class="card">
-      <h2>Virtual Address</h2>
-      <p class="sub">Choose your plan to start your application.</p>
+      <h2>Get Your Virtual Address</h2>
+      <p class="sub">Just pick a term to start — we'll walk you through the rest, and show your exact total before you ever pay.</p>
       <div class="radio-cards">
         <div class="radio-card selected" data-duration="month" onclick="selectDuration('month')">
           <div>Monthly</div>
-          <div id="p-month" style="font-size:16px;margin-top:4px">₹1,799/mo</div>
+          <div style="font-size:11px;color:var(--gray);margin-top:4px;font-weight:600">Flexible, cancel anytime</div>
         </div>
         <div class="radio-card" data-duration="annual" onclick="selectDuration('annual')">
           <div>12 Months</div>
-          <div id="p-annual" style="font-size:16px;margin-top:4px">₹1,499/mo</div>
+          <div style="font-size:11px;color:var(--gray);margin-top:4px;font-weight:600">Best value</div>
         </div>
       </div>
-      <div class="info-box">Deposit (1 month, refundable) + advance (1 month) + GST 18% is payable at booking. The exact total is shown before you pay.</div>
+      <div class="info-box">No payment yet — this step just starts your application. You'll see the full, itemized total (deposit + advance + GST, nothing hidden) right before you pay, at the very last step.</div>
       <button class="btn-primary" onclick="startApplication()" id="step1Btn">Continue →</button>
       <a href="index.html" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">← Back to Home</a>
     </div>
@@ -234,11 +236,18 @@ function renderProgress(activeIdx){
   }).join('');
 }
 
+// GA4 is loaded async and may be blocked by an ad-blocker — guard every call
+// so tracking failures never break the wizard itself.
+function track(name, params){
+  try { if(typeof gtag === 'function') gtag('event', name, params || {}); } catch(e){}
+}
+
 function goStep(n){
   document.querySelectorAll('.step').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('step'+n).classList.add('active');
   renderProgress(n-1);
   window.scrollTo({top:0, behavior:'smooth'});
+  track('apply_step_view', {step_number: n, step_name: STEPS[n-1], application_code: appCode || undefined});
 }
 
 function showToast(msg){
@@ -258,8 +267,6 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
   var c = cfg.contact || {};
   if(p.virtualAddressMonthly) livePrices.virtualAddressMonthly = parseInt(p.virtualAddressMonthly);
   if(p.virtualAddressAnnual) livePrices.virtualAddressAnnual = parseInt(p.virtualAddressAnnual);
-  if(p.virtualAddressMonthly) document.getElementById('p-month').textContent = '₹'+livePrices.virtualAddressMonthly.toLocaleString('en-IN')+'/mo';
-  if(p.virtualAddressAnnual) document.getElementById('p-annual').textContent = '₹'+livePrices.virtualAddressAnnual.toLocaleString('en-IN')+'/mo';
   if(c.phone){ supportPhone = c.phone; supportPhoneTel = 'tel:'+c.phone.replace(/\s/g,''); document.getElementById('s-phone').textContent = c.phone; document.getElementById('s-phone').href = supportPhoneTel; }
 }).catch(function(){});
 
@@ -336,6 +343,7 @@ function startApplication(){
       appCode = d.code; accessToken = d.accessToken;
       localStorage.setItem('ws4y_app_code', appCode);
       localStorage.setItem('ws4y_app_token', accessToken);
+      track('apply_started', {duration: duration, application_code: appCode});
       goStep(2);
     })
     .catch(function(err){ showToast(err.message); })
@@ -356,6 +364,7 @@ function sendOtp(){
     .then(function(d){
       if(!d.success) throw new Error(d.error||'Could not send code');
       document.getElementById('otpGroup').style.display = 'block';
+      track('apply_otp_sent', {application_code: appCode});
       showToast('Verification code sent to your email');
     })
     .catch(function(err){ showToast(err.message); })
@@ -374,6 +383,7 @@ function verifyOtp(){
       emailVerified = true;
       document.getElementById('emailVerifiedNote').style.display = 'block';
       document.getElementById('otpGroup').style.display = 'none';
+      track('apply_otp_verified', {application_code: appCode});
       showToast('Email verified ✓');
     })
     .catch(function(err){ showToast(err.message); })
@@ -482,6 +492,7 @@ function proceedToPayment(){
     .then(function(data){
       if(!data.success) throw new Error(data.error||'Could not start payment');
       document.getElementById('payTotal').textContent = '₹'+data.amount.toLocaleString('en-IN');
+      track('apply_payment_started', {application_code: appCode, value: data.amount, currency: 'INR'});
       var options = {
         key: data.keyId,
         amount: data.amountPaise,
@@ -503,11 +514,12 @@ function proceedToPayment(){
             document.getElementById('s-code').textContent = v.applicationCode;
             document.getElementById('s-payid').textContent = v.paymentId;
             document.getElementById('s-amount').textContent = '₹'+parseInt(v.amount).toLocaleString('en-IN');
+            track('apply_payment_success', {application_code: v.applicationCode, transaction_id: v.paymentId, value: parseInt(v.amount), currency: 'INR'});
             goStep(6);
           })
-          .catch(function(err){ showToast('Payment verification failed: '+err.message+'. Please contact us before retrying.'); });
+          .catch(function(err){ track('apply_payment_verify_failed', {application_code: appCode}); showToast('Payment verification failed: '+err.message+'. Please contact us before retrying.'); });
         },
-        modal: { ondismiss: function(){ showToast('Payment cancelled — you can try again anytime.'); } }
+        modal: { ondismiss: function(){ track('apply_payment_cancelled', {application_code: appCode}); showToast('Payment cancelled — you can try again anytime.'); } }
       };
       var rzp = new Razorpay(options);
       rzp.open();
