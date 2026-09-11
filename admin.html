@@ -235,11 +235,25 @@ tr:hover td{background:#FAFBFF}
     </div>
     <div class="stats-row" id="va-stats"></div>
 
+    <div class="panel" id="va-funnelPanel" style="padding:20px 24px">
+      <div class="panel-header" style="margin-bottom:12px">
+        <div class="panel-title">Funnel &amp; Drop-off <span style="font-weight:400;color:var(--gray);font-size:12px">— where applicants stop, and how long each step takes</span></div>
+      </div>
+      <div id="va-funnelBody" style="font-size:13px;color:var(--gray)">Loading...</div>
+    </div>
+
     <div class="panel" id="va-listPanel">
       <div class="panel-header">
         <div class="panel-title">Virtual Address Applications</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <input class="search-box" id="va-searchBox" placeholder="Search ID, name, business, mobile, GSTIN..." oninput="renderVaTable()">
+          <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px">From
+            <input type="date" id="va-dateFrom" class="search-box" style="width:auto" onchange="onVaDateFilterChange()">
+          </label>
+          <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px">To
+            <input type="date" id="va-dateTo" class="search-box" style="width:auto" onchange="onVaDateFilterChange()">
+          </label>
+          <button class="refresh-btn" onclick="clearVaDateFilter()">Clear Dates</button>
           <div class="filter-row" id="va-filterRow">
             <button class="filter-btn active" onclick="setVaFilter('all',this)">All</button>
             <button class="filter-btn" onclick="setVaFilter('draft',this)">Draft</button>
@@ -649,22 +663,30 @@ var VA_STATUS_LABELS = {
   expired:'Expired', terminated:'Terminated'
 };
 var allVaApps = [];
+var allVaEvents = []; // application_id, event, created_at — every step transition, timestamped
 var currentVaFilter = 'all';
 
 function loadVaApplications(){
   var token = getAdminToken();
   if(!token){ doLogout(); return; }
   document.getElementById('va-loadingBar').style.display='block';
-  fetch('/api/applications/admin-list', {headers:{'Authorization':'Bearer '+token}})
-    .then(function(r){
+  Promise.all([
+    fetch('/api/applications/admin-list', {headers:{'Authorization':'Bearer '+token}}).then(function(r){
       if(r.status===401){ doLogout(); showToast('Session expired — please log in again'); throw new Error('Session expired'); }
       return r.json();
-    })
-    .then(function(d){
+    }),
+    fetch('/api/applications/admin-events', {headers:{'Authorization':'Bearer '+token}}).then(function(r){
+      return r.ok ? r.json() : {success:false};
+    }).catch(function(){ return {success:false}; })
+  ])
+    .then(function(results){
+      var d = results[0], ev = results[1];
       if(!d.success) throw new Error(d.error||'Could not load applications');
       allVaApps = d.applications || [];
+      allVaEvents = (ev && ev.success) ? (ev.events || []) : [];
       renderVaStats();
       renderVaTable();
+      renderVaFunnel();
     })
     .catch(function(err){
       if(err.message!=='Session expired'){
@@ -672,6 +694,29 @@ function loadVaApplications(){
       }
     })
     .finally(function(){ document.getElementById('va-loadingBar').style.display='none'; });
+}
+
+function onVaDateFilterChange(){ renderVaTable(); renderVaFunnel(); }
+function clearVaDateFilter(){
+  document.getElementById('va-dateFrom').value = '';
+  document.getElementById('va-dateTo').value = '';
+  onVaDateFilterChange();
+}
+// Inclusive on both ends — "To" covers the whole day selected.
+function getVaDateRange(){
+  var fromVal = document.getElementById('va-dateFrom').value;
+  var toVal = document.getElementById('va-dateTo').value;
+  return {
+    from: fromVal ? new Date(fromVal+'T00:00:00') : null,
+    to: toVal ? new Date(toVal+'T23:59:59.999') : null
+  };
+}
+function inVaDateRange(dateStr, range){
+  if(!range.from && !range.to) return true;
+  var t = new Date(dateStr).getTime();
+  if(range.from && t < range.from.getTime()) return false;
+  if(range.to && t > range.to.getTime()) return false;
+  return true;
 }
 
 function renderVaStats(){
@@ -694,10 +739,12 @@ function setVaFilter(f,btn){
 
 function getVaFiltered(){
   var q = document.getElementById('va-searchBox').value.toLowerCase();
+  var range = getVaDateRange();
   return allVaApps.filter(function(a){
     var mf = currentVaFilter==='all' || a.status===currentVaFilter;
     var ms = !q || [a.application_code,a.full_name,a.business_name,a.mobile,a.gstin,a.cin,a.llpin].some(function(v){return (v||'').toLowerCase().includes(q);});
-    return mf && ms;
+    var md = inVaDateRange(a.created_at, range);
+    return mf && ms && md;
   });
 }
 
@@ -722,6 +769,122 @@ function exportVaCSV(){
   showToast('Exported '+rows.length+' application(s)');
 }
 
+// Every step's endpoint already calls logEvent() with a real timestamp
+// (see api/applications/save.js, create.js, otp-verify.js, pay.js,
+// verify-payment.js) — this just reads that existing audit trail to
+// compute, per step: how many applications reached it, what fraction of
+// the PREVIOUS step's reachers made it this far (where the drop-off is),
+// and the median time spent between one step and the next.
+// Order matters here — it must match the real chronological order these
+// events fire in (see apply.html: verifyOtp() sets emailVerified=true
+// BEFORE submitPersonal() is even callable), since each row's "Step
+// Conversion" and "Median Time on Step" are computed against the row
+// immediately above it.
+var VA_MILESTONES = [
+  {key:'created',  label:'1 · Plan Selected',      match:function(e){return e.indexOf('Application created')===0;}},
+  {key:'verified', label:'2 · Email Verified',      match:function(e){return e==='Email address verified';}},
+  {key:'personal', label:'2 · Details Saved',       match:function(e){return e.indexOf('Personal details saved')===0;}},
+  {key:'business', label:'3 · Business Saved',      match:function(e){return e.indexOf('Business details saved')===0;}},
+  {key:'address',  label:'4 · Address Saved',       match:function(e){return e.indexOf('Address usage saved')===0;}},
+  {key:'paystart', label:'5 · Payment Opened',      match:function(e){return e.indexOf('Razorpay order created')===0;}},
+  {key:'paydone',  label:'5 · Payment Completed',   match:function(e){return e.indexOf('Payment verified')===0;}}
+];
+
+function msToHuman(ms){
+  if(ms==null) return '—';
+  var s = Math.round(ms/1000);
+  if(s < 60) return s+'s';
+  var m = Math.floor(s/60); s = s%60;
+  if(m < 60) return m+'m '+s+'s';
+  var h = Math.floor(m/60); m = m%60;
+  if(h < 24) return h+'h '+m+'m';
+  var d = Math.floor(h/24); h = h%24;
+  return d+'d '+h+'h';
+}
+
+function median(arr){
+  if(!arr.length) return null;
+  var s = arr.slice().sort(function(a,b){return a-b;});
+  var mid = Math.floor(s.length/2);
+  return s.length%2 ? s[mid] : (s[mid-1]+s[mid])/2;
+}
+
+function renderVaFunnel(){
+  var el = document.getElementById('va-funnelBody');
+  var range = getVaDateRange();
+  var appsInRange = allVaApps.filter(function(a){ return inVaDateRange(a.created_at, range); });
+  if(!appsInRange.length){ el.innerHTML = 'No applications in this date range.'; return; }
+
+  // admin-list.js doesn't expose the numeric applications.id (only
+  // application_code), so events (keyed by application_id) can't be
+  // joined back to allVaApps directly. Instead: group all events by
+  // application_id, then keep only the ids whose own 'Application
+  // created' event timestamp falls in the selected date range — that
+  // event's time is, by definition, the same moment as that
+  // application's created_at.
+  var byApp = {};
+  allVaEvents.forEach(function(ev){
+    (byApp[ev.application_id] = byApp[ev.application_id] || []).push(ev);
+  });
+
+  var fromTime = range.from ? range.from.getTime() : -Infinity;
+  var toTime = range.to ? range.to.getTime() : Infinity;
+  var appIds = Object.keys(byApp).filter(function(id){
+    var evs = byApp[id];
+    var createdEv = evs.filter(function(e){ return e.event.indexOf('Application created')===0; })[0];
+    if(!createdEv) return false;
+    var t = new Date(createdEv.created_at).getTime();
+    return t >= fromTime && t <= toTime;
+  });
+
+  if(!appIds.length){ el.innerHTML = 'No step data for this date range yet.'; return; }
+
+  var total = appIds.length;
+  var counts = {}, durations = {};
+  VA_MILESTONES.forEach(function(m){ counts[m.key]=0; durations[m.key]=[]; });
+
+  appIds.forEach(function(id){
+    var evs = byApp[id].slice().sort(function(a,b){ return new Date(a.created_at)-new Date(b.created_at); });
+    var prevTime = null;
+    VA_MILESTONES.forEach(function(m){
+      var found = evs.filter(function(e){ return m.match(e.event); })[0];
+      if(found){
+        counts[m.key]++;
+        var t = new Date(found.created_at).getTime();
+        if(prevTime !== null) durations[m.key].push(t - prevTime);
+        prevTime = t;
+      }
+    });
+  });
+
+  var prevCount = total;
+  var rowsHtml = VA_MILESTONES.map(function(m){
+    var reached = counts[m.key];
+    var pctOfTotal = total ? Math.round((reached/total)*1000)/10 : 0;
+    var stepConv = prevCount ? Math.round((reached/prevCount)*1000)/10 : 0;
+    var med = median(durations[m.key]);
+    var dropped = prevCount - reached;
+    prevCount = reached;
+    var barColor = pctOfTotal >= 60 ? 'var(--green)' : (pctOfTotal >= 30 ? 'var(--gold)' : 'var(--red)');
+    return '<tr>'+
+      '<td style="font-weight:700">'+esc(m.label)+'</td>'+
+      '<td>'+reached+' <span style="color:var(--gray);font-size:11px">('+pctOfTotal+'% of '+total+')</span></td>'+
+      '<td><div style="background:#F3F4F6;border-radius:6px;height:8px;width:100px;overflow:hidden"><div style="background:'+barColor+';height:100%;width:'+pctOfTotal+'%"></div></div></td>'+
+      '<td style="color:'+(stepConv<70?'var(--red)':'var(--dark)')+';font-weight:700">'+stepConv+'%</td>'+
+      '<td style="color:var(--red)">'+(dropped>0?'-'+dropped:'—')+'</td>'+
+      '<td>'+esc(msToHuman(med))+'</td>'+
+    '</tr>';
+  }).join('');
+
+  el.innerHTML =
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'+
+    '<thead><tr style="text-align:left;color:var(--gray);font-size:11px;text-transform:uppercase">'+
+    '<th style="padding:6px 10px 6px 0">Step</th><th style="padding:6px 10px">Reached</th><th style="padding:6px 10px">Funnel</th>'+
+    '<th style="padding:6px 10px">Step Conversion</th><th style="padding:6px 10px">Dropped Here</th><th style="padding:6px 10px">Median Time on Step</th></tr></thead>'+
+    '<tbody>'+rowsHtml+'</tbody></table></div>'+
+    '<div style="margin-top:10px;font-size:11.5px;color:var(--gray)">Based on '+total+' application(s) started in this date range. "Step Conversion" = % of the previous step\'s reachers who made it here — the lowest number is where people are bouncing hardest. "Median Time on Step" is the typical gap between finishing the previous step and this one (a long gap on an early step often means people are reading/hesitating; a long gap right before payment often means price hesitation).</div>';
+}
+
 function renderVaTable(){
   var filtered = getVaFiltered();
   var tbody = document.getElementById('va-body');
@@ -729,7 +892,7 @@ function renderVaTable(){
   tbody.innerHTML = filtered.map(function(a){
     var sc = a.status==='active'?'status-paid':(a.status==='rejected'||a.status==='terminated')?'status-dropped':'status-filled';
     var payBadge = a.payment_status==='paid' ? '<span class="status-badge status-paid">Paid'+(a.payment_amount?' · Rs '+parseInt(a.payment_amount).toLocaleString('en-IN'):'')+'</span>' : '<span class="status-badge status-filled">'+esc(a.payment_status)+'</span>';
-    var created = a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN') : '—';
+    var created = a.created_at ? new Date(a.created_at).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
     return '<tr style="cursor:pointer" onclick="openVaDetail(\''+esc(a.application_code)+'\')">'+
       '<td style="font-weight:700;color:var(--blue)">'+esc(a.application_code)+'</td>'+
       '<td style="font-weight:600">'+esc(a.full_name||'—')+'</td>'+
