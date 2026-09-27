@@ -7,6 +7,7 @@ const { sql, logEvent } = require('../_db');
 const { requireAdminApplication } = require('../_adminAppLoad');
 const { sendEmail } = require('../_notify');
 const { setCorsHeaders } = require('../_cors');
+const { stopAutopayIfLive } = require('../_autopay');
 
 module.exports = async function handler(req, res) {
   setCorsHeaders(req, res, { allowAuthHeader: true });
@@ -30,6 +31,7 @@ module.exports = async function handler(req, res) {
       WHERE id = ${app.id}
     `;
     await logEvent(app.id, 'admin', 'Application rejected' + (reason ? ': ' + reason : ''));
+    await stopAutopayIfLive(app, 'admin', 'application rejected');
 
     if (app.email) {
       await sendEmail(

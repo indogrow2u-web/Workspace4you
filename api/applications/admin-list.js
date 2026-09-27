@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
       SELECT application_code, status, plan_name, duration, full_name, mobile, email,
              business_type, business_name, gstin, cin, llpin, inventory_requested,
              payment_status, payment_amount, verification_status, admin_review_status,
-             agreement_status, activation_status, created_at, updated_at
+             agreement_status, activation_status, autopay_status, autopay_monthly_rate, created_at, updated_at
       FROM applications
       ORDER BY created_at DESC
       LIMIT 1000

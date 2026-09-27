@@ -32,8 +32,14 @@ module.exports = async function handler(req, res) {
       ORDER BY created_at ASC
     `;
 
+    const { rows: autopayCharges } = await sql`
+      SELECT razorpay_payment_id, amount, status, note, created_at FROM autopay_charges
+      WHERE application_id = ${app.id}
+      ORDER BY created_at DESC
+    `;
+
     const { access_token_hash, ...safeApp } = app;
-    return res.status(200).json({ success: true, application: safeApp, events: events });
+    return res.status(200).json({ success: true, application: safeApp, events: events, autopayCharges: autopayCharges });
   } catch (err) {
     console.error('applications/admin-detail error:', err);
     return res.status(500).json({ error: 'Server error: ' + err.message });

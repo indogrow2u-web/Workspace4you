@@ -26,7 +26,11 @@
 //        (or edit the existing one for this URL)
 //        URL: https://www.workspace4you.co/api/razorpay-webhook
 //        Active events: payment.captured, payment.failed,
-//                        refund.processed, refund.failed
+//                        refund.processed, refund.failed,
+//                        subscription.authenticated, subscription.activated,
+//                        subscription.charged, subscription.pending,
+//                        subscription.halted, subscription.cancelled,
+//                        subscription.completed
 //        Generate a Secret (any strong random string)
 //   2. Vercel -> Project Settings -> Environment Variables
 //        Add RAZORPAY_WEBHOOK_SECRET with the exact same secret value
@@ -69,6 +73,117 @@ function paymentToRow(payment, status){
     status: status,
     txnId: payment.id
   };
+}
+
+// First successful payment on an application — one-time order (via
+// payment.captured) or the first AutoPay charge (via subscription.charged).
+async function markApplicationPaid(app, payment, via){
+  var rupees = Math.round((payment.amount || 0) / 100);
+  await sql`
+    UPDATE applications SET
+      razorpay_payment_id = ${payment.id},
+      payment_status = 'paid',
+      payment_amount = ${rupees},
+      payment_verified_at = now(),
+      status = 'verification_pending',
+      updated_at = now()
+    WHERE id = ${app.id}
+  `;
+  await logEvent(app.id, 'system', 'Payment verified via ' + via + ' — ₹' + rupees + ' (Razorpay ' + payment.id + ')');
+  await logEvent(app.id, 'system', 'Status → Verification Pending');
+
+  if (app.email) {
+    var resumeToken = generateResumeToken(app.application_code);
+    var resumeUrl = resumeToken ? (SITE_URL + '/track.html?resume=' + resumeToken) : (SITE_URL + '/track.html');
+    await sendApplicationReceiptEmail(
+      { application_code: app.application_code, payment_amount: rupees, email: app.email },
+      resumeUrl,
+      SUPPORT_PHONE
+    );
+  }
+}
+
+// Monthly AutoPay (api/applications/admin-autopay.js). Correlated by
+// subscription id; the subscription's notes also carry application_code.
+var SUBSCRIPTION_STATUS = {
+  'subscription.authenticated': 'authenticated',
+  'subscription.activated': 'active',
+  'subscription.charged': 'active',
+  'subscription.pending': 'active',
+  'subscription.halted': 'halted',
+  'subscription.cancelled': 'cancelled',
+  'subscription.completed': 'completed'
+};
+
+async function handleSubscriptionEvent(event){
+  var sub = event.payload && event.payload.subscription && event.payload.subscription.entity;
+  if (!sub) return;
+  var { rows } = await sql`SELECT * FROM applications WHERE razorpay_subscription_id = ${sub.id} LIMIT 1`;
+  var app = rows[0];
+  if (!app) return;
+
+  // Razorpay doesn't guarantee delivery order — a late 'authenticated'
+  // must never overwrite 'active', and nothing revives a cancelled one.
+  var newStatus = SUBSCRIPTION_STATUS[event.event];
+  var terminal = app.autopay_status === 'cancelled' || app.autopay_status === 'completed';
+  var regress = newStatus === 'authenticated' && ['active', 'pending', 'halted'].indexOf(app.autopay_status) !== -1;
+  if (newStatus && app.autopay_status !== newStatus && !terminal && !regress) {
+    await sql`UPDATE applications SET autopay_status = ${newStatus}, updated_at = now() WHERE id = ${app.id}`;
+    if (event.event !== 'subscription.charged') {
+      await logEvent(app.id, 'system', 'AutoPay ' + newStatus + ' (webhook)');
+    }
+    // pending = a monthly charge failed and Razorpay is retrying;
+    // halted = every retry failed, no more automatic charges.
+    if (event.event === 'subscription.pending' || event.event === 'subscription.halted') {
+      var halted = event.event === 'subscription.halted';
+      await sql`
+        INSERT INTO autopay_charges (application_id, amount, status, note)
+        VALUES (${app.id}, ${app.autopay_monthly_rate ? app.autopay_monthly_rate + Math.round(app.autopay_monthly_rate * 0.18) : null},
+                ${halted ? 'halted' : 'failed'},
+                ${halted ? 'All retries failed — AutoPay stopped. Contact the customer.' : 'Monthly charge failed — Razorpay will retry automatically.'})
+      `;
+    }
+  }
+
+  if (event.event === 'subscription.charged') {
+    var payment = event.payload.payment && event.payload.payment.entity;
+    if (!payment) return;
+    // ON CONFLICT keeps Razorpay's retried deliveries from double-logging.
+    await sql`
+      INSERT INTO autopay_charges (application_id, razorpay_payment_id, amount, status, note)
+      VALUES (${app.id}, ${payment.id}, ${Math.round((payment.amount || 0) / 100)}, 'paid',
+              ${sub.paid_count === 1 ? 'First charge (deposit + month 1)' : 'Month ' + sub.paid_count})
+      ON CONFLICT (razorpay_payment_id) DO NOTHING
+    `;
+    if (app.payment_status !== 'paid') {
+      await markApplicationPaid(app, payment, 'AutoPay first charge');
+    } else if (app.razorpay_payment_id !== payment.id) {
+      // Idempotency: a retried delivery of the first charge carries the
+      // same payment id as the one already on record.
+      var { rows: seen } = await sql`SELECT 1 FROM application_events WHERE application_id = ${app.id} AND event LIKE ${'%' + payment.id + '%'} LIMIT 1`;
+      if (!seen.length) {
+        var rupees = Math.round((payment.amount || 0) / 100);
+        if (sub.paid_count === 1) {
+          // First AutoPay charge on an application that was already paid
+          // by a one-time order — the customer has been charged twice.
+          await logEvent(app.id, 'system', '⚠ DOUBLE PAYMENT: AutoPay first charge ₹' + rupees + ' (Razorpay ' + payment.id + ') on an already-paid application — review and refund');
+        } else {
+          await logEvent(app.id, 'system', 'AutoPay monthly charge — ₹' + rupees + ' (Razorpay ' + payment.id + ')');
+        }
+        // Each successful charge pays for one more month of service, so the
+        // expiry cron doesn't expire a customer who's still paying.
+        if (app.expiry_date) {
+          await sql`
+            UPDATE applications SET
+              expiry_date = (GREATEST(expiry_date, CURRENT_DATE) + interval '1 month')::date,
+              expiry_reminder_sent_at = NULL,
+              updated_at = now()
+            WHERE id = ${app.id}
+          `;
+        }
+      }
+    }
+  }
 }
 
 module.exports = async function handler(req, res){
@@ -132,7 +247,22 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ received: true });
   }
 
+  if (event.event && event.event.indexOf('subscription.') === 0) {
+    try {
+      await handleSubscriptionEvent(event);
+    } catch (err) {
+      console.error('Webhook subscription update failed:', err);
+    }
+    return res.status(200).json({ received: true });
+  }
+
   var payment = event.payload && event.payload.payment && event.payload.payment.entity;
+  // AutoPay charges also fire payment.captured, but carry an invoice_id and
+  // no application notes — they're handled by subscription.charged above,
+  // so don't let them fall through into the old booking-flow Sheet log.
+  if (payment && payment.invoice_id) {
+    return res.status(200).json({ received: true });
+  }
   var applicationCode = payment && payment.notes && payment.notes.application_code;
 
   if (applicationCode) {
@@ -141,27 +271,7 @@ module.exports = async function handler(req, res){
       var app = await getApplicationByCode(applicationCode);
       if (app && app.payment_status !== 'paid') {
         if (event.event === 'payment.captured') {
-          await sql`
-            UPDATE applications SET
-              razorpay_payment_id = ${payment.id},
-              payment_status = 'paid',
-              payment_verified_at = now(),
-              status = 'verification_pending',
-              updated_at = now()
-            WHERE id = ${app.id}
-          `;
-          await logEvent(app.id, 'system', 'Payment verified via webhook — ₹' + Math.round((payment.amount || 0) / 100) + ' (Razorpay ' + payment.id + ')');
-          await logEvent(app.id, 'system', 'Status → Verification Pending');
-
-          if (app.email) {
-            var resumeToken = generateResumeToken(app.application_code);
-            var resumeUrl = resumeToken ? (SITE_URL + '/track.html?resume=' + resumeToken) : (SITE_URL + '/track.html');
-            await sendApplicationReceiptEmail(
-              { application_code: app.application_code, payment_amount: Math.round((payment.amount || 0) / 100), email: app.email },
-              resumeUrl,
-              SUPPORT_PHONE
-            );
-          }
+          await markApplicationPaid(app, payment, 'webhook');
         } else if (event.event === 'payment.failed') {
           await sql`UPDATE applications SET payment_status = 'failed', updated_at = now() WHERE id = ${app.id}`;
           await logEvent(app.id, 'system', 'Payment failed (webhook)');

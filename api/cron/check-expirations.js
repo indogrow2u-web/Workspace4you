@@ -21,6 +21,7 @@
 
 const { sql, logEvent } = require('../_db');
 const { readConfig } = require('../_configStore');
+const { stopAutopayIfLive } = require('../_autopay');
 const { sendExpiryReminderEmail, sendExpiredEmail, sendAgreementReminderEmail } = require('../_notify');
 const { generateResumeToken } = require('../_appAuth');
 
@@ -50,6 +51,7 @@ module.exports = async function handler(req, res) {
         AND expiry_date <= (CURRENT_DATE + ${REMINDER_WINDOW_DAYS}::int)
         AND expiry_date >= CURRENT_DATE
         AND expiry_reminder_sent_at IS NULL
+        AND autopay_status NOT IN ('authenticated', 'active', 'pending')
     `;
     let remindersSent = 0;
     for (const app of upcoming) {
@@ -77,6 +79,7 @@ module.exports = async function handler(req, res) {
         await sendExpiredEmail(app, contactPhone, contactEmail);
       }
       await logEvent(app.id, 'system', 'Virtual Address expired');
+      await stopAutopayIfLive(app, 'system', 'Virtual Address expired');
       expiredCount++;
     }
 

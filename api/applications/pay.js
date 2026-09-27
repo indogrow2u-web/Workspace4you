@@ -13,6 +13,7 @@ const { requireOwnedApplication } = require('../_appLoad');
 const { readConfig } = require('../_configStore');
 const { computeTotal } = require('../_pricing');
 const { setCorsHeaders } = require('../_cors');
+const { hasLiveAutopay } = require('../_autopay');
 
 const RAZORPAY_KEY_ID     = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -45,6 +46,12 @@ module.exports = async function handler(req, res) {
 
     if (!app.full_name || !app.email_verified_at) {
       return res.status(400).json({ error: 'Please complete your personal details and verify your email address first' });
+    }
+
+    // An admin has sent this customer a Monthly AutoPay link — paying a
+    // one-time order as well would charge them twice.
+    if (hasLiveAutopay(app)) {
+      return res.status(400).json({ error: 'A Monthly AutoPay payment link has been set up for this application — please pay using the link we sent you.' });
     }
 
     const config = await readConfig();

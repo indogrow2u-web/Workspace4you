@@ -96,6 +96,30 @@ ALTER TABLE applications ADD COLUMN IF NOT EXISTS expiry_reminder_sent_at TIMEST
 -- Safe to run against a table created before agreement reminders existed.
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS agreement_generated_at TIMESTAMPTZ;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS agreement_reminder_sent_at TIMESTAMPTZ;
+-- Monthly AutoPay (Razorpay Subscriptions), created by an admin at a
+-- per-customer negotiated rate — see api/applications/admin-autopay.js.
+-- autopay_monthly_rate is pre-GST; each monthly charge is rate + 18% GST,
+-- and the first charge also carries a GST-free refundable deposit equal
+-- to one month's rate.
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS autopay_monthly_rate INTEGER;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS razorpay_plan_id TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS autopay_link TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS autopay_status TEXT NOT NULL DEFAULT 'none'; -- none | created | authenticated | active | halted | cancelled | completed
+CREATE INDEX IF NOT EXISTS idx_applications_subscription ON applications (razorpay_subscription_id);
+
+-- One row per AutoPay charge attempt, so admin can see month by month
+-- whether the customer is paying. Written only by the Razorpay webhook.
+CREATE TABLE IF NOT EXISTS autopay_charges (
+  id                   SERIAL PRIMARY KEY,
+  application_id       INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  razorpay_payment_id  TEXT UNIQUE,  -- NULL for failure notices (Razorpay sends no payment id with those)
+  amount               INTEGER,
+  status               TEXT NOT NULL, -- paid | failed | halted
+  note                 TEXT,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_autopay_charges_application ON autopay_charges (application_id);
 
 CREATE INDEX IF NOT EXISTS idx_applications_mobile ON applications (mobile);
 CREATE INDEX IF NOT EXISTS idx_applications_status ON applications (status);

@@ -362,6 +362,7 @@ tr:hover td{background:#FAFBFF}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 var LOGIN_URL = '/api/admin-login';
 var CONFIG_URL = '/api/config';
@@ -918,7 +919,7 @@ function renderVaTable(){
       '<td>'+esc(a.business_name||'—')+'</td>'+
       '<td>'+esc(a.mobile||'—')+'</td>'+
       '<td style="font-size:12px">'+esc(a.plan_name||'—')+' ('+esc(VA_DURATION_LABELS[a.duration]||a.duration||'—')+')'+(a.inventory_requested?' <span title="Inventory receiving requested">📦</span>':'')+'</td>'+
-      '<td>'+payBadge+'</td>'+
+      '<td>'+payBadge+(a.autopay_status&&a.autopay_status!=='none'?'<div style="margin-top:4px">'+autopayBadge(a.autopay_status)+'</div>':'')+'</td>'+
       '<td><span class="status-badge '+sc+'">'+esc(VA_STATUS_LABELS[a.status]||a.status)+'</span></td>'+
       '<td style="font-size:12px;color:var(--gray)">'+created+'</td>'+
     '</tr>';
@@ -934,7 +935,7 @@ function openVaDetail(code){
     .then(function(r){return r.json();})
     .then(function(d){
       if(!d.success) throw new Error(d.error||'Could not load application');
-      renderVaDetail(d.application, d.events);
+      renderVaDetail(d.application, d.events, d.autopayCharges);
     })
     .catch(function(err){ document.getElementById('va-detailBody').innerHTML='<span style="color:var(--red)">'+esc(err.message)+'</span>'; });
 }
@@ -954,7 +955,8 @@ function vaActionButtons(a){
     ['approved','agreement_pending','agreement_sent','agreement_accepted','ready_for_activation','active'].indexOf(a.status) === -1;
   var canGenerateAgreement = a.status === 'approved' && a.agreement_status === 'not_generated';
   var canActivate = a.agreement_status === 'accepted' && a.activation_status !== 'active';
-  var canRefund = a.payment_status === 'paid' && a.refund_status === 'none';
+  // AutoPay customers' deposits are returned by hand, never via Razorpay.
+  var canRefund = a.payment_status === 'paid' && a.refund_status === 'none' && !a.razorpay_subscription_id;
 
   var btns = '';
   if(canReview){
@@ -975,7 +977,7 @@ function vaActionButtons(a){
   return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px;padding:16px;background:#F8FAFC;border-radius:10px">'+btns+'</div>';
 }
 
-function renderVaDetail(a, events){
+function renderVaDetail(a, events, autopayCharges){
   var addressUsage = Array.isArray(a.address_usage) ? a.address_usage.join(', ') : '';
   var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">'+
     '<h2 style="font-family:\'Poppins\',sans-serif">'+esc(a.application_code)+'</h2>'+
@@ -989,6 +991,7 @@ function renderVaDetail(a, events){
       '<div class="editor-card"><h3>Verification &amp; Review</h3>'+vaField('Verification Status',a.verification_status)+vaField('Admin Review Status',a.admin_review_status)+vaField('Info Requested',a.info_requested)+'</div>'+
       '<div class="editor-card"><h3>Agreement &amp; Activation</h3>'+vaField('Agreement Version',a.agreement_version)+vaField('Agreement Status',a.agreement_status)+vaField('Activation Status',a.activation_status)+vaField('Activation Date',a.activation_date)+vaField('Expiry Date',a.expiry_date)+'</div>'+
     '</div>'+
+    vaAutopaySection(a, autopayCharges)+
     '<div class="panel" style="margin-top:20px;padding:20px"><h3 style="font-family:\'Poppins\',sans-serif;font-size:14px;margin-bottom:14px">Documents</h3><div id="va-docsSection">Loading...</div></div>'+
     '<div class="panel" style="margin-top:20px;padding:20px"><h3 style="font-family:\'Poppins\',sans-serif;font-size:14px;margin-bottom:14px">Activity History</h3>'+
     (events&&events.length ? events.map(function(e){
@@ -998,6 +1001,7 @@ function renderVaDetail(a, events){
     '</div>';
   document.getElementById('va-detailBody').innerHTML = html;
   loadVaDocuments(a.application_code);
+  renderAutopayQr(a.autopay_link);
 }
 
 // ---- VA ADMIN ACTIONS ----
@@ -1039,6 +1043,116 @@ function vaActivate(code){
 function vaRefund(code){
   if(!confirm('Initiate a full refund via Razorpay for this payment? This cannot be un-done.')) return;
   vaAction('/api/applications/admin-refund', code);
+}
+
+// ---- VA MONTHLY AUTOPAY ----
+var AUTOPAY_STATUS_LABELS = {none:'Not set up', created:'Link sent — waiting for customer', authenticated:'Mandate approved', active:'Active', pending:'Last charge failed — Razorpay retrying', halted:'Halted — all retries failed, no more charges', cancelled:'Cancelled', completed:'Completed'};
+// Short Active/Inactive badge for the list + detail header.
+function autopayBadge(status){
+  if(!status || status==='none') return '';
+  if(status==='active' || status==='authenticated') return '<span class="status-badge status-paid">AutoPay Active</span>';
+  if(status==='pending') return '<span class="status-badge status-dropped">⚠ AutoPay Failing</span>';
+  if(status==='halted') return '<span class="status-badge status-dropped">⚠ AutoPay Stopped</span>';
+  if(status==='created') return '<span class="status-badge status-filled">AutoPay Link Sent</span>';
+  return '<span class="status-badge status-filled">AutoPay Inactive</span>';
+}
+function autopayMoney(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
+function autopayMonthly(r){ return r + Math.round(r*0.18); }
+function vaAutopaySection(a, autopayCharges){
+  var code = esc(a.application_code);
+  var status = a.autopay_status || 'none';
+  var live = status === 'authenticated' || status === 'active' || status === 'halted';
+  var canCreate = a.payment_status !== 'paid' && !live;
+  var html = '<div class="panel" style="margin-top:20px;padding:20px"><h3 style="font-family:\'Poppins\',sans-serif;font-size:14px;margin-bottom:14px">Monthly AutoPay</h3>';
+  if(status!=='none') html += '<div style="margin-bottom:10px">'+autopayBadge(status)+'</div>';
+  html += vaField('Status', AUTOPAY_STATUS_LABELS[status]||status);
+  if(a.autopay_monthly_rate){
+    var r = a.autopay_monthly_rate, m = autopayMonthly(r);
+    html += vaField('Agreed rate', autopayMoney(r)+' + 18% GST = '+autopayMoney(m)+'/month · first charge '+autopayMoney(r+m)+' (incl. '+autopayMoney(r)+' refundable deposit, no GST)');
+  }
+  if(a.autopay_link && status === 'created'){
+    var phone = String(a.mobile||'').replace(/\D/g,'').slice(-10);
+    var waText = 'Hi '+(a.full_name||'')+', please complete your Workspace4You Virtual Address payment and set up monthly AutoPay here: '+a.autopay_link;
+    html += '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin:6px 0 14px">'+
+      '<div id="va-autopayQr" style="padding:8px;background:#fff;border:1px solid #E5E7EB;border-radius:8px"></div>'+
+      '<div style="flex:1;min-width:220px">'+
+        '<input readonly id="va-autopayLink" value="'+esc(a.autopay_link)+'" style="width:100%;padding:10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;margin-bottom:10px" onclick="this.select()">'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          '<button class="copy-btn" onclick="copyAutopayLink()">Copy link</button>'+
+          (phone.length===10 ? '<a class="copy-btn" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/91'+phone+'?text='+encodeURIComponent(waText)+'">Send on WhatsApp</a>' : '')+
+          '<button class="copy-btn" onclick="downloadAutopayQr(\''+code+'\')">Download QR</button>'+
+        '</div>'+
+        '<p style="font-size:12px;color:var(--gray);margin-top:10px;line-height:1.5">Customer scans the QR with their phone camera (or opens the link), pays the first charge and approves AutoPay in GPay/PhonePe/card. The application is marked paid automatically.</p>'+
+      '</div></div>';
+  }
+  if(canCreate){
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+      '<label style="font-size:13px;font-weight:600">Monthly rate (₹, before GST)</label>'+
+      '<input type="number" id="va-autopayRate" min="100" step="1" value="'+(a.autopay_monthly_rate||1499)+'" oninput="previewAutopay()" style="width:120px;padding:9px;border:1px solid #D1D5DB;border-radius:8px">'+
+      '<button class="save-btn" style="width:auto;padding:10px 18px" onclick="vaCreateAutopay(\''+code+'\')">'+(a.autopay_link?'Create new link (cancels old one)':'Create AutoPay link')+'</button>'+
+      '</div><div id="va-autopayPreview" style="font-size:12px;color:var(--gray);margin-top:8px"></div>';
+  }
+  if(a.razorpay_subscription_id && status !== 'cancelled' && status !== 'completed'){
+    html += '<button class="refresh-btn" style="margin-top:12px;color:var(--red);border-color:var(--red)" onclick="vaCancelAutopay(\''+code+'\')">Cancel AutoPay</button> ';
+  }
+  if(a.razorpay_subscription_id){
+    html += '<h4 style="font-size:13px;margin:18px 0 8px">Payment History</h4>';
+    if(!autopayCharges || !autopayCharges.length){
+      html += '<div style="color:var(--gray);font-size:13px">No charges yet</div>';
+    } else {
+      var paidCount = autopayCharges.filter(function(c){return c.status==='paid';}).length;
+      var paidTotal = autopayCharges.reduce(function(t,c){return t+(c.status==='paid'?(c.amount||0):0);},0);
+      html += '<div style="font-size:12px;color:var(--gray);margin-bottom:6px">'+paidCount+' successful charge(s) · '+autopayMoney(paidTotal)+' collected</div>'+
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;color:var(--gray);font-size:11px;text-transform:uppercase">'+
+        '<th style="padding:6px 10px 6px 0">Date</th><th style="padding:6px 10px">Amount</th><th style="padding:6px 10px">Result</th><th style="padding:6px 10px">Details</th></tr></thead><tbody>'+
+        autopayCharges.map(function(c){
+          var when = new Date(c.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+          var badge = c.status==='paid' ? '<span class="status-badge status-paid">Paid</span>' : '<span class="status-badge status-dropped">'+(c.status==='halted'?'Stopped':'Failed')+'</span>';
+          return '<tr style="border-top:1px solid #F3F4F6"><td style="padding:6px 10px 6px 0">'+when+'</td><td style="padding:6px 10px">'+(c.amount?autopayMoney(c.amount):'—')+'</td><td style="padding:6px 10px">'+badge+'</td>'+
+            '<td style="padding:6px 10px;font-size:12px;color:var(--gray)">'+esc(c.note||'')+(c.razorpay_payment_id?' · '+esc(c.razorpay_payment_id):'')+'</td></tr>';
+        }).join('')+'</tbody></table></div>';
+    }
+  }
+  return html + '</div>';
+}
+function previewAutopay(){
+  var el = document.getElementById('va-autopayPreview'), input = document.getElementById('va-autopayRate');
+  if(!el||!input) return;
+  var r = Math.round(Number(input.value)||0);
+  if(r < 100){ el.textContent = 'Minimum ₹100'; return; }
+  var m = autopayMonthly(r);
+  el.textContent = 'First charge: '+autopayMoney(r)+' deposit + '+autopayMoney(m)+' (1st month incl. GST) = '+autopayMoney(r+m)+' · then '+autopayMoney(m)+' every month until cancelled';
+}
+function renderAutopayQr(link){
+  var el = document.getElementById('va-autopayQr');
+  if(el && link && window.QRCode) new QRCode(el, {text:link, width:160, height:160, correctLevel:QRCode.CorrectLevel.M});
+  previewAutopay();
+}
+function copyAutopayLink(){
+  var input = document.getElementById('va-autopayLink');
+  if(!input) return;
+  (navigator.clipboard ? navigator.clipboard.writeText(input.value) : Promise.reject())
+    .catch(function(){ input.select(); document.execCommand('copy'); })
+    .then(function(){ showToast('Link copied'); });
+}
+function downloadAutopayQr(code){
+  var canvas = document.querySelector('#va-autopayQr canvas');
+  if(!canvas){ showToast('QR not ready'); return; }
+  var link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = 'autopay-'+code+'.png';
+  link.click();
+}
+function vaCreateAutopay(code){
+  var r = Math.round(Number((document.getElementById('va-autopayRate')||{}).value)||0);
+  if(r < 100){ showToast('Enter a valid monthly rate'); return; }
+  var m = autopayMonthly(r);
+  if(!confirm('Create AutoPay link at '+autopayMoney(r)+' + GST ('+autopayMoney(m)+'/month)?\nFirst charge: '+autopayMoney(r+m)+' incl. '+autopayMoney(r)+' refundable deposit.')) return;
+  vaAction('/api/applications/admin-autopay', code, {action:'create', monthlyRate:r});
+}
+function vaCancelAutopay(code){
+  if(!confirm('Cancel this customer\'s AutoPay? No further monthly charges will be taken. This cannot be un-done.')) return;
+  vaAction('/api/applications/admin-autopay', code, {action:'cancel'});
 }
 
 // ---- VA DOCUMENTS ----
